@@ -172,4 +172,33 @@ Defined in `DropZone.Domain.Interfaces`:
 * `Task<string?> PickFolderAsync(string title, CancellationToken ct = default)`: Opens directory selector.
 * `Task<string?> PickSaveFileAsync(string title, string defaultFileName, string? extension = null, CancellationToken ct = default)`: Opens native save-file destination prompt.
 
+---
+
+## 5. Pro & Enterprise Interfaces
+
+Defined in `DropZone.Domain.Interfaces`:
+
+### `IFolderSyncService`
+* `Task<List<SyncFileItem>> ScanDirectoryAsync(string directoryPath, CancellationToken ct = default)`: Recursively catalogs directory files, timestamps, sizes, and SHA-256 hashes.
+* `Task<FolderSyncManifest> ComputeDeltaAsync(string sourceFolder, string targetFolder, SyncConflictResolution policy, CancellationToken ct = default)`: Detects added, modified, deleted, and conflicting files according to resolution policy.
+* `Task<int> ExecuteSyncPlanAsync(FolderSyncManifest manifest, CancellationToken ct = default)`: Applies synchronization actions atomically using `.syncpart` files.
+
+### `IComplianceAuditService`
+* `Task<ComplianceAuditEntry> LogEventAsync(AuditEventType eventType, string actorDeviceId, string targetDeviceId, string details, CancellationToken ct = default)`: Appends an immutable, hash-chained audit record to the ledger.
+* `Task<AuditChainVerificationResult> VerifyAuditChainIntegrityAsync(CancellationToken ct = default)`: Verifies sequential hash integrity across the full database table, detecting altered rows or sequence gaps.
+* `Task<IReadOnlyList<ComplianceAuditEntry>> GetAuditLogAsync(int limit = 200, CancellationToken ct = default)`: Returns historical audit records.
+* `Task<string> ExportAuditReportJsonAsync(CancellationToken ct = default)`: Generates a signed SOC2/HIPAA compliance audit report.
+
+### `IEnterpriseSecurityService`
+* `Task<bool> ValidateDeviceCertificateAsync(string deviceId, EnterpriseCertificate certificate, CancellationToken ct = default)`: Validates device certificates against trusted roots, date bounds, and revocation lists.
+* `Task RegisterTrustedRootCertificateAsync(EnterpriseCertificate rootCertificate, CancellationToken ct = default)`: Enrolls corporate Root CA certificates.
+* `Task RevokeCertificateAsync(string thumbprint, string reason, CancellationToken ct = default)`: Adds certificate to the CRL.
+* `Task<EnterprisePolicy> GetPolicyAsync(CancellationToken ct = default)`: Retrieves active enterprise restrictions.
+* `Task UpdatePolicyAsync(EnterprisePolicy policy, CancellationToken ct = default)`: Updates corporate security policies.
+
+### `IBandwidthThrottler`
+* `void SetLimit(long bytesPerSecond)`: Configures maximum throughput limit (0 = unlimited).
+* `Task ThrottleAsync(int bytesToSend, CancellationToken ct = default)`: Applies token bucket throttling delays.
+
+
 

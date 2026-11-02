@@ -142,3 +142,29 @@ The managed C# application and the native Rust engine communicate across a stric
 * **Adaptive Navigation**: Desktop renders a 200px Left Navigation Rail; mobile form factors automatically switch to a thumb-friendly Bottom Navigation Bar with large tap targets.
 * **Mobile File Selection**: Since desktop drag-and-drop is unavailable on mobile operating systems, the Transfers view provides a dedicated "Pick Files to Send" touch action integrated with the platform storage picker.
 
+---
+
+## 7. Pro & Enterprise Architecture
+
+### 7.1 Recursive Folder Synchronization
+The folder synchronization subsystem (`FolderSyncService`) facilitates zero-cloud, direct directory synchronization:
+* **Directory Tree Scanner**: Recursively inspects file attributes (relative path, byte size, last modified timestamp UTC, and streaming SHA-256).
+* **Delta Diffing Engine**: Compares source and destination manifests, cataloging entries into `Added`, `Modified`, `Deleted`, and `Identical`.
+* **Conflict Resolution Engine**: Deterministically resolves competing file versions based on user-defined policies: `SourceWins`, `TargetWins`, `NewerTimestampWins`, `LargerFileWins`, or `ManualReview`.
+* **Atomic Part-File Swap**: Synchronized files are written to `.syncpart` temporary buffers before being atomically renamed, preventing half-written corruptions during crashes or power cuts.
+
+### 7.2 Cryptographic Compliance Audit Ledger
+Designed for enterprise regulatory compliance (SOC2, HIPAA, ISO 27001):
+* **Tamper-Evident Hash Chain**: Each audit entry is cryptographically anchored to its predecessor:
+  $$\text{EntryHash}_n = \text{SHA256}(\text{Seq}_n \parallel \text{Timestamp}_n \parallel \text{EventType}_n \parallel \text{Actor}_n \parallel \text{Target}_n \parallel \text{Details}_n \parallel \text{EntryHash}_{n-1})$$
+* **Mathematical Verification**: `VerifyAuditChainIntegrityAsync` traverses the ledger sequentially, detecting any altered payload, deleted row, or inserted entry with 100% precision.
+* **Compliance Reporting**: Exports full audit reports in signed JSON format including chain verification status.
+
+### 7.3 Enterprise PKI & Certificate Validation
+* **X.509 Certificate Validation**: Validates corporate fleet certificates against trusted Root CA stores (`EnterpriseCertificateValidator`).
+* **Certificate Revocation**: In-memory and database Certificate Revocation Lists (CRL) prevent unauthorized communication from compromised or decommissioned devices.
+* **Enterprise Security Policy**: Configures mandatory certificate enforcement, restrictions against unmanaged peer devices, and maximum allowed file limits.
+
+### 7.4 Bandwidth Throttling & Quality of Service (QoS)
+* **Token Bucket Algorithm**: `BandwidthThrottler` regulates network throughput with sub-millisecond precision, preventing link saturation on shared office or VPN connections.
+

@@ -51,7 +51,18 @@ $env:DOTNET_CLI_TELEMETRY_OPTOUT="1"; $env:MSBUILDUSESERVER="0"; dotnet test tes
 * `protocol::tests::test_header_serialization` – 16-byte `DZP1` fixed header serialization/deserialization.
 * `protocol::tests::test_chunk_descriptor_serialization` – 64-byte chunk descriptor framing.
 
-### .NET Tests (51 Tests – All Passing)
+### .NET Tests (60 Tests – All Passing)
+* **Release End-to-End Quality Assurance (Phase 6)**:
+  * `DropZone_FullSystemStack_ExecutesEndToEndWorkflowSuccessfully`: Comprehensive validation of all 8 application layers executing in sequence (discovery, SAS pairing, outbound transfer, progress events, completion, folder synchronization, encrypted backup export/restore, compliance audit ledger verification, and clean resource disposal).
+* **Pro & Enterprise Functionality (Phase 5)**:
+  * `ComplianceAuditService_LogAndVerifyChain`: Sequential event logging, SHA-256 hash chaining, and ledger verification.
+  * `ComplianceAuditService_TamperedRow`: Direct database tampering detection via hash mismatch.
+  * `ComplianceAuditService_DeletedRow`: Attack simulation detecting sequence gaps from deleted records.
+  * `FolderSyncService_ScanDirectory`: Recursive directory tree scanning, file metadata, and SHA-256 computation.
+  * `FolderSyncService_ComputeDeltaAndExecuteSyncPlan`: Delta analysis (`Added`, `Modified`, `Deleted`, `Identical`) and atomic file synchronization.
+  * `EnterpriseCertificateValidator`: X.509 certificate validation, trusted root CA enforcement, expiration, and CRL revocation checking.
+  * `BandwidthThrottler`: Token bucket QoS rate-limiting under varying throughput caps.
+  * `TransferOrchestrator_EnterpriseAuditAndPolicyIntegration`: Transfer lifecycle integration with the compliance audit trail and enterprise security policies.
 * **Mobile Platforms (Android & iOS)**:
   * `AndroidPlatformService`: Target identification (`PlatformType.Android`), mobile flag assertion, scoped storage directory layout (`Downloads`, `AppData`, `Cache`, `Quarantine`).
   * `AndroidWakeLockService`: CPU wake lock lifecycle management (`PARTIAL_WAKE_LOCK`), Wi-Fi multicast lock acquisition for mDNS broadcast discovery.

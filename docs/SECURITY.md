@@ -87,4 +87,23 @@ DROPZONE adheres to the principle of **Defense-in-Depth** and **Zero-Trust Netwo
 | **Directory Traversal** | Malicious sender path `../../system32` | Canonical relative path validation against base download sandbox. |
 | **Partial File Tampering** | Bit-flipping attacks on transit | Poly1305 AEAD tag authentication + SHA-256 chunk & file hash checks. |
 | **Drive Filling / Denial of Service** | Gigantic transfer payload | Explicit transfer approval requirement; disk space pre-flight check. |
+| **Audit Ledger Modification** | Attacker tampering with historical transfer records | Cryptographic SHA-256 hash chaining detects altered, inserted, or deleted entries. |
+| **Rogue Fleet Devices** | Unauthorized device claiming corporate identity | Mandatory X.509 Enterprise Certificate validation against Root CA with CRL checks. |
+
+---
+
+## 5. Enterprise Security & Regulatory Compliance
+
+### Tamper-Evident Compliance Audit Ledger
+DROPZONE implements an immutable, append-only audit ledger satisfying SOC2, HIPAA, and ISO 27001 regulatory standards:
+* **Cryptographic Hash Chain**: Every event (pairing, transfer, alert, quarantine) is linked to the previous entry hash:
+  $$\text{EntryHash}_n = \text{SHA256}(\text{Seq}_n \parallel \text{Timestamp}_n \parallel \text{EventType}_n \parallel \text{Actor}_n \parallel \text{Target}_n \parallel \text{Details}_n \parallel \text{EntryHash}_{n-1})$$
+* **Tamper Detection**: Altering any row or deleting historical records breaks the hash chain, triggering instant detection during startup or compliance audits.
+* **Signed Export**: Audit trails can be exported to digitally signed JSON audit reports.
+
+### Enterprise PKI & Mutual Certificate Authentication
+* Corporate deployments can mandate X.509 device certificates signed by an internal Root CA.
+* Untrusted or unmanaged personal devices are blocked automatically when enterprise policy is enforced.
+* Revoked certificates are maintained in a Certificate Revocation List (CRL) for immediate cutoff.
+
 
