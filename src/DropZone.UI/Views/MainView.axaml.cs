@@ -19,3 +19,4 @@ public partial class MainView : UserControl
         await vm.ExportEncryptedBackupAsync(passphrase);
     }
 }
+

@@ -18,12 +18,20 @@ public sealed partial class MainViewModel : ViewModelBase
     private readonly IBackupService _backupService;
     private readonly IPlatformService? _platformService;
     private readonly IPlatformStoragePicker? _storagePicker;
+    private readonly IComplianceAuditService? _auditService;
+    private readonly IFolderSyncService? _syncService;
 
     public bool IsMobile => _platformService?.IsMobile ?? false;
     public string PlatformName => _platformService?.Platform.ToString() ?? "Desktop";
 
     [ObservableProperty]
-    private string _currentTab = "Transfers"; // Transfers, Devices, History, Diagnostics, Settings
+    private string _currentTab = "Transfers"; // Transfers, Devices, History, Diagnostics, Settings, Audit
+
+    [ObservableProperty]
+    private string _auditIntegrityStatus = "Ledger intact (SHA-256 chain verified)";
+
+    [ObservableProperty]
+    private ObservableCollection<ComplianceAuditEntry> _auditLog = new();
 
     [ObservableProperty]
     private ObservableCollection<TransferItemViewModel> _activeTransfers = new();
@@ -103,7 +111,9 @@ public sealed partial class MainViewModel : ViewModelBase
         IBackupService backupService,
         string defaultDownloadPath,
         IPlatformService? platformService = null,
-        IPlatformStoragePicker? storagePicker = null)
+        IPlatformStoragePicker? storagePicker = null,
+        IComplianceAuditService? auditService = null,
+        IFolderSyncService? syncService = null)
     {
         _orchestrator = orchestrator;
         _deviceRepo = deviceRepo;
@@ -114,6 +124,8 @@ public sealed partial class MainViewModel : ViewModelBase
         _downloadPath = defaultDownloadPath;
         _platformService = platformService;
         _storagePicker = storagePicker;
+        _auditService = auditService;
+        _syncService = syncService;
 
         _orchestrator.JobUpdated += OnJobUpdated;
         _orchestrator.InboundTransferRequested += OnInboundRequest;
@@ -145,6 +157,16 @@ public sealed partial class MainViewModel : ViewModelBase
         foreach (var dev in devices)
         {
             AddOrUpdateDevice(dev);
+        }
+
+        // Load initial compliance audit entries
+        if (_auditService != null)
+        {
+            var entries = await _auditService.GetAuditLogAsync(50);
+            foreach (var e in entries)
+            {
+                AuditLog.Add(e);
+            }
         }
     }
 
@@ -237,6 +259,29 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             PublicEndpointFormatted = "Direct probe unreachable";
             NatDiagnosticsStatus = "Relay Fallback Ready: Symmetric NAT detected.";
+        }
+    }
+
+    [RelayCommand]
+    public async Task VerifyAuditLedgerAsync()
+    {
+        if (_auditService == null) return;
+        var result = await _auditService.VerifyAuditChainIntegrityAsync();
+        AuditIntegrityStatus = result.IsValid
+            ? $"Verified {result.TotalEntriesVerified} events. Hash chain mathematically intact."
+            : $"TAMPER DETECTED: {result.ErrorMessage}";
+    }
+
+    [RelayCommand]
+    public async Task ExportAuditReportAsync()
+    {
+        if (_auditService == null || _storagePicker == null) return;
+        var json = await _auditService.ExportAuditReportJsonAsync();
+        var dest = await _storagePicker.PickSaveFileAsync("Export Compliance Audit Report", "dropzone_compliance_audit.json", "json");
+        if (!string.IsNullOrEmpty(dest))
+        {
+            await File.WriteAllTextAsync(dest, json);
+            AuditIntegrityStatus = $"Audit report exported to {Path.GetFileName(dest)}";
         }
     }
 

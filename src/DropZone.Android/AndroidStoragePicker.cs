@@ -48,3 +48,4 @@ public sealed class AndroidStoragePicker : IPlatformStoragePicker
         return null;
     }
 }
+

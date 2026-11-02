@@ -98,3 +98,4 @@ public interface IPlatformLifecycleService
     Task NotifyBackgroundTransferStartingAsync(string jobId, CancellationToken ct = default);
     Task NotifyBackgroundTransferFinishedAsync(string jobId, CancellationToken ct = default);
 }
+

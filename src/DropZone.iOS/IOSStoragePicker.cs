@@ -48,3 +48,4 @@ public sealed class IOSStoragePicker : IPlatformStoragePicker
         return null;
     }
 }
+

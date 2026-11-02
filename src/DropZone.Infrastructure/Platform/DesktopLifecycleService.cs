@@ -42,3 +42,4 @@ public sealed class DesktopLifecycleService : IPlatformLifecycleService
 
     public int ActiveBackgroundTransfersCount => _activeBackgroundTransfers.Count;
 }
+

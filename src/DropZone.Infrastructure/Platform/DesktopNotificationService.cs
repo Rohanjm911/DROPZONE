@@ -84,3 +84,4 @@ public sealed class DesktopNotificationService : IPlatformNotificationService
         return Task.CompletedTask;
     }
 }
+

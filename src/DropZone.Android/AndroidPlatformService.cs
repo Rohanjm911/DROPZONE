@@ -61,3 +61,4 @@ public sealed class AndroidPlatformService : IPlatformService
         return Task.FromResult(true);
     }
 }
+

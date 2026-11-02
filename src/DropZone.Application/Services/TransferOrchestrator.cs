@@ -16,6 +16,9 @@ public sealed class TransferOrchestrator : IAsyncDisposable
     private readonly IPlatformNotificationService? _notificationService;
     private readonly IPlatformWakeLockService? _wakeLockService;
     private readonly IPlatformLifecycleService? _lifecycleService;
+    private readonly IComplianceAuditService? _auditService;
+    private readonly IEnterpriseSecurityService? _enterpriseSecurityService;
+    private readonly IBandwidthThrottler? _bandwidthThrottler;
     private readonly Dictionary<Guid, TransferSpeedEstimator> _speedEstimators = new();
     private readonly Dictionary<Guid, int> _retryCounts = new();
     private readonly object _lock = new();
@@ -36,7 +39,10 @@ public sealed class TransferOrchestrator : IAsyncDisposable
         TransferQueue? queue = null,
         IPlatformNotificationService? notificationService = null,
         IPlatformWakeLockService? wakeLockService = null,
-        IPlatformLifecycleService? lifecycleService = null)
+        IPlatformLifecycleService? lifecycleService = null,
+        IComplianceAuditService? auditService = null,
+        IEnterpriseSecurityService? enterpriseSecurityService = null,
+        IBandwidthThrottler? bandwidthThrottler = null)
     {
         _engine = engine;
         _repository = repository;
@@ -47,6 +53,9 @@ public sealed class TransferOrchestrator : IAsyncDisposable
         _notificationService = notificationService;
         _wakeLockService = wakeLockService;
         _lifecycleService = lifecycleService;
+        _auditService = auditService;
+        _enterpriseSecurityService = enterpriseSecurityService;
+        _bandwidthThrottler = bandwidthThrottler;
 
         _engine.EventReceived += OnEngineEventReceived;
     }
@@ -55,6 +64,8 @@ public sealed class TransferOrchestrator : IAsyncDisposable
     {
         await _repository.InitializeAsync(ct);
         await _deviceRepository.InitializeAsync(ct);
+        if (_auditService != null) await _auditService.InitializeAsync(ct);
+        if (_enterpriseSecurityService != null) await _enterpriseSecurityService.InitializeAsync(ct);
         await _engine.InitializeAsync(config, ct);
         await _engine.StartServerAsync("0.0.0.0", config.ListenPort, ct);
         await _engine.StartDiscoveryAsync(config.DeviceName, config.ListenPort, ct);
@@ -96,6 +107,11 @@ public sealed class TransferOrchestrator : IAsyncDisposable
 
         _queue.TryEnqueue(job);
         await _repository.AddJobAsync(job, ct);
+        if (_auditService != null)
+        {
+            await _auditService.LogEventAsync(AuditEventType.TransferStarted, senderDeviceId, targetDevice.Id, 
+                $"Outbound job {manifest.JobId}: {manifest.Files.Count} files ({manifest.TotalBytes} bytes)", ct);
+        }
         JobUpdated?.Invoke(job);
 
         lock (_lock)
@@ -168,6 +184,12 @@ public sealed class TransferOrchestrator : IAsyncDisposable
             job.ErrorMessage = reason;
             JobUpdated?.Invoke(job);
             await _repository.UpdateJobStateAsync(job.Id, job.State, reason, ct);
+
+            if (_auditService != null)
+            {
+                await _auditService.LogEventAsync(AuditEventType.TransferRejected, "local", job.PeerDeviceId, 
+                    $"Job {jobId} rejected: {reason}", ct);
+            }
         }
 
         await _engine.RejectJobAsync(jobId, reason, ct);
@@ -223,6 +245,12 @@ public sealed class TransferOrchestrator : IAsyncDisposable
             JobUpdated?.Invoke(job);
             await _repository.UpdateJobStateAsync(job.Id, job.State, job.ErrorMessage, ct);
             await _storage.CleanPartFilesAsync(jobId, ct);
+
+            if (_auditService != null)
+            {
+                await _auditService.LogEventAsync(AuditEventType.TransferCancelled, "local", job.PeerDeviceId, 
+                    $"Job {jobId} cancelled by user", ct);
+            }
 
             if (_wakeLockService != null)
                 await _wakeLockService.ReleaseWakeLockAsync(jobId.ToString(), ct);
@@ -353,6 +381,14 @@ public sealed class TransferOrchestrator : IAsyncDisposable
                                 isSuccess: true);
                         }
 
+                        if (_auditService != null)
+                        {
+                            await _auditService.LogEventAsync(AuditEventType.TransferCompleted, 
+                                cJob.Direction == TransferDirection.Outbound ? "local" : cJob.PeerDeviceId, 
+                                cJob.PeerDeviceId, 
+                                $"Job {compJobId} completed: {cJob.Files.Count} files ({cJob.TotalBytes} bytes)");
+                        }
+
                         lock (_lock)
                         {
                             _speedEstimators.Remove(compJobId);
@@ -375,6 +411,10 @@ public sealed class TransferOrchestrator : IAsyncDisposable
                     {
                         // Update device trust level in database
                         await _deviceRepository.UpdateTrustLevelAsync(successResult.PeerDeviceId, DeviceTrustLevel.Trusted);
+                        if (_auditService != null)
+                        {
+                            await _auditService.LogEventAsync(AuditEventType.DeviceEnrolled, successResult.PeerDeviceId, "local", "Device enrolled via SAS pairing");
+                        }
                         PairingCompleted?.Invoke(successResult);
                     }
                     break;
@@ -429,11 +469,30 @@ public sealed class TransferOrchestrator : IAsyncDisposable
 
         // Security check: Verify if any files in manifest are suspicious or disguised
         var hasSuspiciousFiles = manifest.Files.Any(f => _security.AnalyzeFile(f.RelativePath).IsSuspicious);
-        if (hasSuspiciousFiles && _notificationService != null)
+        if (hasSuspiciousFiles)
         {
-            await _notificationService.ShowSecurityAlertNotificationAsync(
-                "Suspicious File Warning",
-                $"Inbound transfer from '{manifest.SenderDeviceName}' contains potential malware or disguised executable extensions.");
+            if (_notificationService != null)
+            {
+                await _notificationService.ShowSecurityAlertNotificationAsync(
+                    "Suspicious File Warning",
+                    $"Inbound transfer from '{manifest.SenderDeviceName}' contains potential malware or disguised executable extensions.");
+            }
+            if (_auditService != null)
+            {
+                await _auditService.LogEventAsync(AuditEventType.SecurityAlertTriggered, manifest.SenderDeviceId, "local", 
+                    $"Disguised/suspicious file received in manifest for job {manifest.JobId}");
+            }
+        }
+
+        // Enterprise policy enforcement
+        if (_enterpriseSecurityService != null)
+        {
+            var policy = await _enterpriseSecurityService.GetPolicyAsync();
+            if (manifest.TotalBytes > policy.MaxAllowedFileSize)
+            {
+                await RejectInboundTransferAsync(job.Id, $"File size exceeds enterprise policy limit of {policy.MaxAllowedFileSize} bytes");
+                return;
+            }
         }
 
         // Check Device Trust Level and Granular Permissions

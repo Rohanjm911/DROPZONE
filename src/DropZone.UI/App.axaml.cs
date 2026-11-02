@@ -7,6 +7,7 @@ using DropZone.Application.Services;
 using DropZone.Domain.Interfaces;
 using DropZone.Engine.Interop;
 using DropZone.Infrastructure.Database;
+using DropZone.Infrastructure.Enterprise;
 using DropZone.Infrastructure.Platform;
 using DropZone.Infrastructure.Storage;
 using DropZone.UI.ViewModels;
@@ -184,6 +185,10 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ITransferRepository>(_ => new SqliteTransferRepository(dbPath));
         services.AddSingleton<IDeviceRepository>(_ => new SqliteDeviceRepository(dbPath));
         services.AddSingleton<IBackupService, BackupService>();
+        services.AddSingleton<IComplianceAuditService>(_ => new ComplianceAuditService(dbPath));
+        services.AddSingleton<IFolderSyncService, FolderSyncService>();
+        services.AddSingleton<IEnterpriseSecurityService, EnterpriseCertificateValidator>();
+        services.AddSingleton<IBandwidthThrottler>(_ => new BandwidthThrottler(0));
 
         // Engine & Orchestrator
         services.AddSingleton<IDropZoneEngine, DropZoneEngineInterop>();
@@ -197,7 +202,10 @@ public partial class App : Avalonia.Application
             sp.GetRequiredService<TransferQueue>(),
             sp.GetRequiredService<IPlatformNotificationService>(),
             sp.GetRequiredService<IPlatformWakeLockService>(),
-            sp.GetRequiredService<IPlatformLifecycleService>()
+            sp.GetRequiredService<IPlatformLifecycleService>(),
+            sp.GetRequiredService<IComplianceAuditService>(),
+            sp.GetRequiredService<IEnterpriseSecurityService>(),
+            sp.GetRequiredService<IBandwidthThrottler>()
         ));
 
         // ViewModels
@@ -210,7 +218,9 @@ public partial class App : Avalonia.Application
             sp.GetRequiredService<IBackupService>(),
             downloadDir,
             sp.GetRequiredService<IPlatformService>(),
-            sp.GetRequiredService<IPlatformStoragePicker>()
+            sp.GetRequiredService<IPlatformStoragePicker>(),
+            sp.GetRequiredService<IComplianceAuditService>(),
+            sp.GetRequiredService<IFolderSyncService>()
         ));
     }
 }

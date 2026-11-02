@@ -58,3 +58,4 @@ public sealed class DesktopPlatformService : IPlatformService
         return Task.FromResult(true);
     }
 }
+

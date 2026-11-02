@@ -60,3 +60,4 @@ public sealed class IOSPlatformService : IPlatformService
         return Task.FromResult(true);
     }
 }
+
