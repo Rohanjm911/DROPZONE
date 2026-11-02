@@ -35,6 +35,15 @@ public sealed class SqliteDeviceRepository : IDeviceRepository
                 last_seen TEXT NOT NULL,
                 public_key_fingerprint TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS device_permissions (
+                device_id TEXT PRIMARY KEY,
+                allow_auto_accept INTEGER NOT NULL DEFAULT 1,
+                max_auto_accept_bytes INTEGER NOT NULL DEFAULT 104857600,
+                scoped_download_folder TEXT,
+                require_pin_verification INTEGER NOT NULL DEFAULT 0,
+                revoked_at TEXT
+            );
         """;
         await cmd.ExecuteNonQueryAsync(ct);
     }
@@ -121,6 +130,60 @@ public sealed class SqliteDeviceRepository : IDeviceRepository
     public Task BlockDeviceAsync(string deviceId, CancellationToken ct = default)
     {
         return UpdateTrustLevelAsync(deviceId, DeviceTrustLevel.Blocked, ct);
+    }
+
+    public async Task<DevicePermissions> GetPermissionsAsync(string deviceId, CancellationToken ct = default)
+    {
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync(ct);
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT * FROM device_permissions WHERE device_id = @id LIMIT 1;";
+        cmd.Parameters.AddWithValue("@id", deviceId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (await reader.ReadAsync(ct))
+        {
+            var revokedStr = reader.IsDBNull(reader.GetOrdinal("revoked_at")) ? null : reader.GetString(reader.GetOrdinal("revoked_at"));
+            return new DevicePermissions
+            {
+                DeviceId = deviceId,
+                AllowAutoAccept = reader.GetInt32(reader.GetOrdinal("allow_auto_accept")) == 1,
+                MaxAutoAcceptBytes = reader.GetInt64(reader.GetOrdinal("max_auto_accept_bytes")),
+                ScopedDownloadFolder = reader.IsDBNull(reader.GetOrdinal("scoped_download_folder")) ? "" : reader.GetString(reader.GetOrdinal("scoped_download_folder")),
+                RequirePinVerification = reader.GetInt32(reader.GetOrdinal("require_pin_verification")) == 1,
+                RevokedAt = string.IsNullOrEmpty(revokedStr) ? null : DateTime.Parse(revokedStr)
+            };
+        }
+
+        return DevicePermissions.Default(deviceId);
+    }
+
+    public async Task UpdatePermissionsAsync(DevicePermissions permissions, CancellationToken ct = default)
+    {
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync(ct);
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            INSERT INTO device_permissions (device_id, allow_auto_accept, max_auto_accept_bytes, scoped_download_folder, require_pin_verification, revoked_at)
+            VALUES (@id, @auto, @max_bytes, @folder, @pin, @revoked)
+            ON CONFLICT(device_id) DO UPDATE SET
+                allow_auto_accept = excluded.allow_auto_accept,
+                max_auto_accept_bytes = excluded.max_auto_accept_bytes,
+                scoped_download_folder = excluded.scoped_download_folder,
+                require_pin_verification = excluded.require_pin_verification,
+                revoked_at = excluded.revoked_at;
+        """;
+
+        cmd.Parameters.AddWithValue("@id", permissions.DeviceId);
+        cmd.Parameters.AddWithValue("@auto", permissions.AllowAutoAccept ? 1 : 0);
+        cmd.Parameters.AddWithValue("@max_bytes", permissions.MaxAutoAcceptBytes);
+        cmd.Parameters.AddWithValue("@folder", (object?)permissions.ScopedDownloadFolder ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@pin", permissions.RequirePinVerification ? 1 : 0);
+        cmd.Parameters.AddWithValue("@revoked", permissions.RevokedAt.HasValue ? permissions.RevokedAt.Value.ToString("O") : (object)DBNull.Value);
+
+        await cmd.ExecuteNonQueryAsync(ct);
     }
 
     private static Device MapReaderToDevice(SqliteDataReader reader)

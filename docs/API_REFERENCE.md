@@ -80,6 +80,9 @@ int32_t dropzone_engine_test_stun(const char* stun_server, char* out_json, size_
 
 // Gathers host and STUN reflexive candidates, emitting DZ_EVENT_NAT_CANDIDATE_DISCOVERED events.
 int32_t dropzone_engine_gather_nat_candidates(const char* stun_server);
+
+// Sends an RFC-compliant diagnostic ping probe to measure RTT latency.
+int32_t dropzone_engine_ping_peer(const char* peer_ip, uint16_t peer_port);
 ```
 
 ---
@@ -96,6 +99,7 @@ Delivered across `dropzone_engine_set_event_callback`:
 | `11`| `DZ_EVENT_TRANSFER_ACCEPTED` | `{"job_id": "...", "resume_offset": 0}` |
 | `12`| `DZ_EVENT_TRANSFER_REJECTED` | `{"job_id": "...", "reason": "Declined by user"}` |
 | `20`| `DZ_EVENT_PROGRESS` | `{"job_id": "...", "file_index": 0, "bytes_transferred": 1048576, "total_bytes": 10485760, "speed_bps": 25000000, "eta_seconds": 3}` |
+| `25`| `DZ_EVENT_TELEMETRY` | `{"job_id": "...", "rtt_ms": 12, "speed_bytes_per_sec": 45000000, "chunk_size": 1048576, "route": "direct_lan", "packet_loss_pct": 0.0}` |
 | `30`| `DZ_EVENT_PAUSED` | `{"job_id": "..."}` |
 | `31`| `DZ_EVENT_RESUMED` | `{"job_id": "...", "resumed_at_offset": 5242880}` |
 | `32`| `DZ_EVENT_CANCELLED` | `{"job_id": "...", "reason": "User cancelled"}` |

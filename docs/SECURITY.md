@@ -61,6 +61,20 @@ DROPZONE adheres to the principle of **Defense-in-Depth** and **Zero-Trust Netwo
   * Users can inspect, permanently delete, or override and restore quarantined files from the UI.
 * **Temporary Files**: Inbound chunks stream into `<filename>.<job_id>.dropzone_part` before atomic promotion upon SHA-256 validation.
 
+### 3.4 Encrypted Backup & Audit Archive Security
+* **Vault Envelope Format (`DZBK1`)**:
+  * 5 bytes Magic: `DZBK1`
+  * 16 bytes Cryptographic Salt (`RandomNumberGenerator.GetBytes(16)`)
+  * 12 bytes AES-GCM Nonce (`RandomNumberGenerator.GetBytes(12)`)
+  * 16 bytes Poly1305 / AES-GCM Authentication Tag
+  * Variable length encrypted JSON payload
+* **Key Derivation**: `PBKDF2-HMAC-SHA256` with 100,000 iterations over user-supplied master passphrase.
+* **Integrity & Tamper Resistance**: Any bit modification to ciphertext, salt, or tag immediately triggers authentication failure (`CryptographicException`) without executing or deserializing untrusted data.
+* **Granular Policy Enforcement**:
+  * `MaxAutoAcceptBytes`: Inbound transfers exceeding this threshold always require explicit interactive confirmation, preventing silent disk filling.
+  * `RequirePinVerification`: Forces fresh SAS 6-digit confirmation on every transfer for high-security endpoints.
+  * Revocation timestamps immediately invalidate future transfer requests.
+
 ---
 
 ## 4. Threat Model & Mitigations

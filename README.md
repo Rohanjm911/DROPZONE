@@ -73,11 +73,13 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full structural details.
    * Heuristic threat analyzer: Right-to-Left Override (RTLO) Unicode spoofing detection, disguised double extension detection.
    * Isolated Quarantine Vault (`%LOCALAPPDATA%/DropZone/Quarantine/`) with read-only attribution, companion `.meta.json` tracking, safe restoration, and permanent purge.
    * Device permission management (Trusted, Prompt, Blocked, Revoked) in SQLite.
-3. **Phase 3: Analytics & Device Management** (Next Phase)
-   * Real-time network telemetry, ping, and transfer speed diagnostics charts.
-   * Detailed device permission management and capability flags.
-   * Encrypted local backup and export of transfer history.
-4. **Phase 4: Mobile Applications (Android & iOS)**
+3. **Phase 3: Analytics & Device Management** (Completed ✅)
+   * Real-time network telemetry, diagnostic RTT ping probes, and link latency tracking.
+   * Adaptive chunk sizing engine dynamically scaling between 64 KB and 4 MB based on measured bandwidth and loss.
+   * Granular device permissions (`DevicePermissions`: auto-accept byte thresholds, custom folder scoping, forced PIN verification, instant revocation).
+   * Encrypted local backup vault (`.dzbackup` envelope with PBKDF2 100,000 iterations + AES-256-GCM AEAD).
+   * Dedicated Avalonia UI Diagnostics & Telemetry view with live connection metrics and encrypted export/import.
+4. **Phase 4: Mobile Applications (Android & iOS)** (Next Phase)
    * Avalonia mobile adaptations, scoped storage handling, background transfer services.
 5. **Phase 5: Pro & Enterprise Functionality**
    * Multi-interface aggregation, folder sync, enterprise credential management.

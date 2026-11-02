@@ -50,6 +50,7 @@ internal static class NativeMethods
     public const int DZ_EVENT_TRANSFER_ACCEPTED = 11;
     public const int DZ_EVENT_TRANSFER_REJECTED = 12;
     public const int DZ_EVENT_PROGRESS = 20;
+    public const int DZ_EVENT_TELEMETRY = 25;
     public const int DZ_EVENT_PAUSED = 30;
     public const int DZ_EVENT_RESUMED = 31;
     public const int DZ_EVENT_CANCELLED = 32;
@@ -122,6 +123,9 @@ internal static class NativeMethods
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "dropzone_engine_gather_nat_candidates")]
     public static extern int DropZoneEngineGatherNatCandidates([MarshalAs(UnmanagedType.LPUTF8Str)] string stunServer);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "dropzone_engine_ping_peer")]
+    public static extern int DropZoneEnginePingPeer([MarshalAs(UnmanagedType.LPUTF8Str)] string peerIp, ushort peerPort);
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "dropzone_engine_shutdown")]
     public static extern int DropZoneEngineShutdown();

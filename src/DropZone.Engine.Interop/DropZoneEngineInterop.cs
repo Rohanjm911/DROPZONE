@@ -204,6 +204,15 @@ public sealed class DropZoneEngineInterop : IDropZoneEngine
         return Task.CompletedTask;
     }
 
+    public Task PingPeerAsync(string peerIp, ushort peerPort, CancellationToken ct = default)
+    {
+        EnsureInitialized();
+        var res = NativeMethods.DropZoneEnginePingPeer(peerIp, peerPort);
+        if (res != 0)
+            throw new InvalidOperationException($"Failed to ping peer: {GetLastError()}");
+        return Task.CompletedTask;
+    }
+
     private void EnsureInitialized()
     {
         if (!_initialized)

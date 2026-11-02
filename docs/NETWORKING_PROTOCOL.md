@@ -40,6 +40,8 @@ All frames sent over a DROPZONE connection begin with a 16-byte fixed-length hea
   * `0x0005` : `PAIRING_CONFIRM` (User verified SAS PIN match)
   * `0x0006` : `PAIRING_REJECT` (User declined or PIN mismatch)
   * `0x0008` : `CANDIDATE_EXCHANGE` (ICE host/srflx/relay endpoints)
+  * `0x000A` : `PING` (Diagnostic round-trip latency probe)
+  * `0x000B` : `PONG` (Immediate echo of ping timestamp/sequence)
   * `0x0010` : `TRANSFER_REQUEST` (Manifest metadata in JSON)
   * `0x0011` : `TRANSFER_ACCEPT` (Approved with resume byte offset)
   * `0x0012` : `TRANSFER_REJECT` (Declined by recipient or policy)
@@ -149,5 +151,19 @@ When resuming an interrupted transfer:
 * **Cryptographic Blindness**:
   * All payload data forwarded through TURN relays consists of raw encrypted `DZP1` frames (ChaCha20-Poly1305 with peer session keys).
   * Relays only see opaque byte envelopes. Zero plaintext file or manifest data is accessible to intermediate relays.
+
+---
+
+## 7. Adaptive Chunk Sizing & Telemetry
+
+DROPZONE implements dynamic, link-aware chunk sizing to optimize throughput across diverse network topologies:
+
+* **Base Default**: `1,048,576` bytes (1.0 MB).
+* **Scaling Rules**:
+  * **Ultra-Fast LAN (10GbE / Fast Wi-Fi 6, RTT < 5ms, Speed > 100 MB/s)**: Chunk size dynamically expands to `4,194,304` bytes (4.0 MB) to maximize NIC saturation and eliminate kernel framing overhead.
+  * **Standard LAN (Gigabit, RTT < 25ms, Speed > 30 MB/s)**: Chunk size scales to `2,097,152` bytes (2.0 MB).
+  * **High-Latency or Lossy WAN (RTT > 150ms or Retry Rate > 2%)**: Chunk size downscales to `262,144` bytes (256 KB) or `524_288` bytes (512 KB) to prevent costly packet retransmission penalties.
+* **Bounds**: Minimum `64 KB`, Maximum `8 MB`.
+
 
 

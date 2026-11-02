@@ -35,6 +35,7 @@ public interface IDropZoneEngine : IAsyncDisposable
     Task<bool> ConfirmPairingAsync(string peerDeviceId, string pinCode, bool isAccepted, CancellationToken ct = default);
     Task<NatCandidate?> TestStunAsync(string stunServer, CancellationToken ct = default);
     Task GatherNatCandidatesAsync(string stunServer, CancellationToken ct = default);
+    Task PingPeerAsync(string peerIp, ushort peerPort, CancellationToken ct = default);
 
     event EventHandler<EngineEvent>? EventReceived;
 }
@@ -59,6 +60,16 @@ public interface IDeviceRepository
     Task UpdateTrustLevelAsync(string deviceId, Enums.DeviceTrustLevel trustLevel, CancellationToken ct = default);
     Task RevokeDeviceAsync(string deviceId, CancellationToken ct = default);
     Task BlockDeviceAsync(string deviceId, CancellationToken ct = default);
+    Task<DevicePermissions> GetPermissionsAsync(string deviceId, CancellationToken ct = default);
+    Task UpdatePermissionsAsync(DevicePermissions permissions, CancellationToken ct = default);
+}
+
+public interface IBackupService
+{
+    Task<byte[]> CreateEncryptedBackupAsync(string passphrase, CancellationToken ct = default);
+    Task<DropZoneBackupPackage> RestoreEncryptedBackupAsync(byte[] backupBytes, string passphrase, CancellationToken ct = default);
+    Task ExportBackupToFileAsync(string filePath, string passphrase, CancellationToken ct = default);
+    Task<DropZoneBackupPackage> ImportBackupFromFileAsync(string filePath, string passphrase, CancellationToken ct = default);
 }
 
 public interface IFileSystemStorage

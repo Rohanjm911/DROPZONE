@@ -22,6 +22,7 @@ public sealed class TransferOrchestrator : IAsyncDisposable
     public event Action<PairingPinInfo>? PairingPinDisplayRequested;
     public event Action<PairingResult>? PairingCompleted;
     public event Action<NatCandidate>? NatCandidateDiscovered;
+    public event Action<TransferTelemetry>? TelemetryUpdated;
 
     public TransferOrchestrator(
         IDropZoneEngine engine,
@@ -264,6 +265,14 @@ public sealed class TransferOrchestrator : IAsyncDisposable
                     }
                     break;
 
+                case 25: // DZ_EVENT_TELEMETRY
+                    var telemetry = JsonSerializer.Deserialize<TransferTelemetry>(e.PayloadJson);
+                    if (telemetry != null)
+                    {
+                        TelemetryUpdated?.Invoke(telemetry);
+                    }
+                    break;
+
                 case 40: // DZ_EVENT_COMPLETED
                     var compJobId = Guid.Parse(root.GetProperty("job_id").GetString()!);
                     if (_queue.TryGet(compJobId, out var cJob) && cJob != null)
@@ -354,24 +363,39 @@ public sealed class TransferOrchestrator : IAsyncDisposable
         // Security check: Verify if any files in manifest are suspicious or disguised
         var hasSuspiciousFiles = manifest.Files.Any(f => _security.AnalyzeFile(f.RelativePath).IsSuspicious);
 
-        // Check Device Trust Level
+        // Check Device Trust Level and Granular Permissions
         var peer = await _deviceRepository.GetDeviceAsync(manifest.SenderDeviceId);
-        if (peer != null && peer.TrustLevel == DeviceTrustLevel.Blocked)
+        var permissions = await _deviceRepository.GetPermissionsAsync(manifest.SenderDeviceId);
+
+        if (peer != null && (peer.TrustLevel == DeviceTrustLevel.Blocked || permissions.IsRevoked))
         {
-            await RejectInboundTransferAsync(job.Id, "Device blocked by security policy");
+            await RejectInboundTransferAsync(job.Id, "Device blocked or revoked by security policy");
             return;
         }
 
-        // Only auto-accept trusted devices if NO files are suspicious!
-        if (peer != null && peer.TrustLevel == DeviceTrustLevel.Trusted && !hasSuspiciousFiles)
+        // Granular check: Size threshold and pin requirement
+        var withinSizeLimit = manifest.TotalBytes <= permissions.MaxAutoAcceptBytes;
+        var autoAcceptPermitted = peer != null && 
+                                  peer.TrustLevel == DeviceTrustLevel.Trusted && 
+                                  permissions.AllowAutoAccept && 
+                                  withinSizeLimit && 
+                                  !permissions.RequirePinVerification && 
+                                  !hasSuspiciousFiles;
+
+        if (autoAcceptPermitted)
         {
-            // Auto-accept trusted devices
+            // Auto-accept trusted device within threshold
             await AcceptInboundTransferAsync(job.Id);
             return;
         }
 
-        // Prompt user (including suspicious file warning if present)
+        // Prompt user (including suspicious file warning or size prompt)
         InboundTransferRequested?.Invoke(manifest);
+    }
+
+    public Task PingPeerAsync(string peerIp, ushort peerPort, CancellationToken ct = default)
+    {
+        return _engine.PingPeerAsync(peerIp, peerPort, ct);
     }
 
     public Task StartPairingAsync(string peerIp, ushort peerPort, CancellationToken ct = default)

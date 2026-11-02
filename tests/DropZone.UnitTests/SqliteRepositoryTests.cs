@@ -120,6 +120,41 @@ public class SqliteRepositoryTests : IDisposable
         Assert.Contains(all, d => d.Id == device.Id);
     }
 
+    [Fact]
+    public async Task DevicePermissions_CrudAndThresholds_WorkCorrectly()
+    {
+        await _deviceRepo.InitializeAsync();
+
+        var deviceId = "perm-dev-test-1";
+
+        // Default permissions when not in DB
+        var defPerm = await _deviceRepo.GetPermissionsAsync(deviceId);
+        Assert.Equal(deviceId, defPerm.DeviceId);
+        Assert.True(defPerm.AllowAutoAccept);
+        Assert.Equal(104_857_600, defPerm.MaxAutoAcceptBytes);
+        Assert.False(defPerm.IsRevoked);
+
+        // Update permissions
+        var custom = new DevicePermissions
+        {
+            DeviceId = deviceId,
+            AllowAutoAccept = false,
+            MaxAutoAcceptBytes = 52_428_800, // 50MB
+            ScopedDownloadFolder = "Clients/SecretDocs",
+            RequirePinVerification = true,
+            RevokedAt = DateTime.UtcNow
+        };
+
+        await _deviceRepo.UpdatePermissionsAsync(custom);
+
+        var retrieved = await _deviceRepo.GetPermissionsAsync(deviceId);
+        Assert.False(retrieved.AllowAutoAccept);
+        Assert.Equal(52_428_800, retrieved.MaxAutoAcceptBytes);
+        Assert.Equal("Clients/SecretDocs", retrieved.ScopedDownloadFolder);
+        Assert.True(retrieved.RequirePinVerification);
+        Assert.True(retrieved.IsRevoked);
+    }
+
     public void Dispose()
     {
         try

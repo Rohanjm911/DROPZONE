@@ -33,6 +33,7 @@ public sealed class Device
     public DeviceTrustLevel TrustLevel { get; set; } = DeviceTrustLevel.Prompt;
     public DateTime LastSeen { get; set; } = DateTime.UtcNow;
     public string PublicKeyFingerprint { get; set; } = string.Empty;
+    public DevicePermissions Permissions { get; set; } = new();
     public bool IsOnline => (DateTime.UtcNow - LastSeen).TotalSeconds < 30;
 }
 

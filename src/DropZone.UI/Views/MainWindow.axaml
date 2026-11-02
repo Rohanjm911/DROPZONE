@@ -76,6 +76,11 @@
             <TextBlock Text="History" FontSize="13" FontWeight="SemiBold" />
           </Button>
 
+          <Button Classes="NavBtn" Command="{Binding SwitchTabCommand}" CommandParameter="Diagnostics"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" CornerRadius="6">
+            <TextBlock Text="Diagnostics" FontSize="13" FontWeight="SemiBold" />
+          </Button>
+
           <Button Classes="NavBtn" Command="{Binding SwitchTabCommand}" CommandParameter="Settings"
                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" CornerRadius="6">
             <TextBlock Text="Settings" FontSize="13" FontWeight="SemiBold" />
@@ -243,7 +248,63 @@
           </StackPanel>
         </ScrollViewer>
 
-        <!-- 4. SETTINGS TAB -->
+        <!-- 4. DIAGNOSTICS & TELEMETRY TAB -->
+        <ScrollViewer IsVisible="{Binding CurrentTab, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Diagnostics'}">
+          <StackPanel Spacing="16" MaxWidth="680" HorizontalAlignment="Left">
+            <TextBlock Text="Network Telemetry &amp; System Diagnostics" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+            <TextBlock Text="Real-time link measurement, adaptive chunk sizing metrics, and encrypted vault backups." FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" Margin="0,0,0,4" />
+
+            <!-- Real-Time Link Telemetry Card -->
+            <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="18">
+              <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="*, Auto">
+                  <TextBlock Grid.Column="0" Text="Live Connection &amp; Adaptive Sizing" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource DzTextPrimaryBrush}" VerticalAlignment="Center" />
+                  <Button Grid.Column="1" Content="Ping Selected Peer" Command="{Binding PingSelectedDeviceCommand}" FontSize="12" Padding="12,5" CornerRadius="4" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*, *, *" Margin="0,4,0,0">
+                  <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Text="Route Mode" FontSize="11" Foreground="{DynamicResource DzTextMutedBrush}" />
+                    <TextBlock Text="{Binding ActiveRouteFormatted}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource DzPrimaryBrush}" />
+                  </StackPanel>
+
+                  <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock Text="Round-Trip Latency (RTT)" FontSize="11" Foreground="{DynamicResource DzTextMutedBrush}" />
+                    <TextBlock Text="{Binding LatencyFormatted}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource DzSuccessBrush}" />
+                  </StackPanel>
+
+                  <StackPanel Grid.Column="2" Spacing="2">
+                    <TextBlock Text="Adaptive Chunk Size" FontSize="11" Foreground="{DynamicResource DzTextMutedBrush}" />
+                    <TextBlock Text="{Binding ActiveChunkSizeFormatted}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+                  </StackPanel>
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <!-- Encrypted Backup & Audit Archive Card -->
+            <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="18">
+              <StackPanel Spacing="12">
+                <TextBlock Text="Encrypted Audit &amp; Pairing Backup" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+                <TextBlock Text="Create a military-grade encrypted backup of your paired devices, cryptographic keys, and transfer audit history. Protected with PBKDF2 (100,000 iterations) and AES-256-GCM." 
+                           FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" TextWrapping="Wrap" />
+
+                <StackPanel Spacing="6" Margin="0,6,0,0">
+                  <TextBlock Text="Backup Encryption Passphrase:" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+                  <TextBox x:Name="BackupPassphraseBox" PasswordChar="•" Watermark="Enter secure passphrase..." Background="{DynamicResource DzBgBrush}" BorderBrush="{DynamicResource DzBorderBrush}" CornerRadius="6" Padding="10,8" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                  <Button Content="Export Encrypted Backup (.dzbackup)" Click="OnExportBackupClick"
+                          Background="{DynamicResource DzPrimaryBrush}" Foreground="White" FontWeight="SemiBold" FontSize="12" Padding="14,8" CornerRadius="6" />
+                </StackPanel>
+
+                <TextBlock Text="{Binding BackupStatusMessage}" FontSize="12" Foreground="{DynamicResource DzSuccessBrush}" TextWrapping="Wrap" IsVisible="{Binding BackupStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- 5. SETTINGS TAB -->
         <ScrollViewer IsVisible="{Binding CurrentTab, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Settings'}">
           <StackPanel Spacing="16" MaxWidth="600" HorizontalAlignment="Left">
             <TextBlock Text="Application Settings" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource DzTextPrimaryBrush}" />

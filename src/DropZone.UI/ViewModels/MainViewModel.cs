@@ -15,9 +15,10 @@ public sealed partial class MainViewModel : ViewModelBase
     private readonly ITransferRepository _transferRepo;
     private readonly IFileSystemStorage _storage;
     private readonly ISecurityService _security;
+    private readonly IBackupService _backupService;
 
     [ObservableProperty]
-    private string _currentTab = "Transfers"; // Transfers, Devices, History, Settings
+    private string _currentTab = "Transfers"; // Transfers, Devices, History, Diagnostics, Settings
 
     [ObservableProperty]
     private ObservableCollection<TransferItemViewModel> _activeTransfers = new();
@@ -65,6 +66,18 @@ public sealed partial class MainViewModel : ViewModelBase
     private string _natDiagnosticsStatus = "Ready";
 
     [ObservableProperty]
+    private string _latencyFormatted = "Direct Probe Pending";
+
+    [ObservableProperty]
+    private string _activeChunkSizeFormatted = "1.0 MB (Adaptive)";
+
+    [ObservableProperty]
+    private string _activeRouteFormatted = "Direct LAN";
+
+    [ObservableProperty]
+    private string _backupStatusMessage = string.Empty;
+
+    [ObservableProperty]
     private string _deviceName = Environment.MachineName;
 
     [ObservableProperty]
@@ -82,6 +95,7 @@ public sealed partial class MainViewModel : ViewModelBase
         ITransferRepository transferRepo,
         IFileSystemStorage storage,
         ISecurityService security,
+        IBackupService backupService,
         string defaultDownloadPath)
     {
         _orchestrator = orchestrator;
@@ -89,6 +103,7 @@ public sealed partial class MainViewModel : ViewModelBase
         _transferRepo = transferRepo;
         _storage = storage;
         _security = security;
+        _backupService = backupService;
         _downloadPath = defaultDownloadPath;
 
         _orchestrator.JobUpdated += OnJobUpdated;
@@ -96,6 +111,7 @@ public sealed partial class MainViewModel : ViewModelBase
         _orchestrator.PairingPinDisplayRequested += OnPairingPinDisplay;
         _orchestrator.PairingCompleted += OnPairingCompleted;
         _orchestrator.NatCandidateDiscovered += OnNatCandidateDiscovered;
+        _orchestrator.TelemetryUpdated += OnTelemetryUpdated;
     }
 
     public async Task InitializeAsync()
@@ -367,6 +383,76 @@ public sealed partial class MainViewModel : ViewModelBase
             PublicEndpointFormatted = $"{candidate.Ip}:{candidate.Port} ({candidate.CandidateType})";
             NatDiagnosticsStatus = "P2P Candidate Active";
         });
+    }
+
+    private void OnTelemetryUpdated(TransferTelemetry telemetry)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            LatencyFormatted = telemetry.FormattedLatency;
+            ActiveChunkSizeFormatted = $"{telemetry.FormattedChunkSize} (Adaptive)";
+            ActiveRouteFormatted = telemetry.Route switch
+            {
+                NetworkRouteType.ReflexiveP2P => "Reflexive P2P (NAT Traversed)",
+                NetworkRouteType.TurnRelay => "Encrypted TURN Relay",
+                _ => "Direct LAN (Local Socket)"
+            };
+        });
+    }
+
+    [RelayCommand]
+    public async Task PingSelectedDeviceAsync()
+    {
+        if (SelectedDevice == null) return;
+        LatencyFormatted = "Probing ping...";
+        await _orchestrator.PingPeerAsync(SelectedDevice.Device.IpAddress, SelectedDevice.Device.Port);
+    }
+
+    [RelayCommand]
+    public async Task ExportEncryptedBackupAsync(string passphrase)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(passphrase))
+            {
+                BackupStatusMessage = "Error: Passphrase cannot be empty.";
+                return;
+            }
+
+            var backupDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Documents", "DropZone");
+            Directory.CreateDirectory(backupDir);
+            var filePath = Path.Combine(backupDir, $"DropZone_Backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.dzbackup");
+
+            await _backupService.ExportBackupToFileAsync(filePath, passphrase);
+            BackupStatusMessage = $"Encrypted backup exported to:\n{filePath}";
+        }
+        catch (Exception ex)
+        {
+            BackupStatusMessage = $"Export failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public async Task RestoreEncryptedBackupAsync((string filePath, string passphrase) param)
+    {
+        try
+        {
+            BackupStatusMessage = "Restoring backup...";
+            var package = await _backupService.ImportBackupFromFileAsync(param.filePath, param.passphrase);
+            BackupStatusMessage = $"Restored {package.Devices.Count} devices and {package.TransferHistory.Count} history items successfully.";
+
+            // Refresh UI devices
+            NearbyDevices.Clear();
+            var devices = await _deviceRepo.GetAllDevicesAsync();
+            foreach (var dev in devices)
+            {
+                AddOrUpdateDevice(dev);
+            }
+        }
+        catch (Exception ex)
+        {
+            BackupStatusMessage = $"Restore failed: {ex.Message}";
+        }
     }
 
     public void AddOrUpdateDevice(Device device)

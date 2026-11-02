@@ -23,6 +23,7 @@ pub const DZ_EVENT_TRANSFER_REQUEST: i32 = 10;
 pub const DZ_EVENT_TRANSFER_ACCEPTED: i32 = 11;
 pub const DZ_EVENT_TRANSFER_REJECTED: i32 = 12;
 pub const DZ_EVENT_PROGRESS: i32 = 20;
+pub const DZ_EVENT_TELEMETRY: i32 = 25;
 pub const DZ_EVENT_PAUSED: i32 = 30;
 pub const DZ_EVENT_RESUMED: i32 = 31;
 pub const DZ_EVENT_CANCELLED: i32 = 32;
@@ -223,6 +224,10 @@ pub unsafe extern "C" fn dropzone_engine_start_server(bind_ip: *const c_char, po
                                     if let Ok(json_str) = std::str::from_utf8(&payload) {
                                         dispatch_event(DZ_EVENT_PAIRING_FAILED, json_str);
                                     }
+                                }
+                                FrameType::Ping => {
+                                    let pong_header = FrameHeader::new(FrameType::Pong, header.sequence, 0);
+                                    let _ = write_frame(&mut socket, &pong_header, &[]).await;
                                 }
                                 _ => {}
                             }
@@ -682,6 +687,66 @@ pub unsafe extern "C" fn dropzone_engine_gather_nat_candidates(
         if let Ok(candidate) = StunClient::query_server(&server_str).await {
             if let Ok(json) = serde_json::to_string(&candidate) {
                 dispatch_event(DZ_EVENT_NAT_CANDIDATE_DISCOVERED, &json);
+            }
+        }
+    });
+
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dropzone_engine_ping_peer(
+    peer_ip: *const c_char,
+    peer_port: u16,
+) -> i32 {
+    if peer_ip.is_null() {
+        return -1;
+    }
+
+    let ip_str = match CStr::from_ptr(peer_ip).to_str() {
+        Ok(s) => s.to_string(),
+        Err(_) => return -2,
+    };
+
+    let state = match get_state() {
+        Some(s) => s,
+        None => return -3,
+    };
+
+    let addr = format!("{}:{}", ip_str, peer_port);
+
+    state.runtime.spawn(async move {
+        let start = std::time::Instant::now();
+        match TcpStream::connect(&addr).await {
+            Ok(mut stream) => {
+                let header = FrameHeader::new(FrameType::Ping, 1, 0);
+                if write_frame(&mut stream, &header, &[]).await.is_ok() {
+                    if let Ok((resp_header, _)) = read_frame(&mut stream).await {
+                        if resp_header.frame_type == FrameType::Pong {
+                            let rtt = start.elapsed().as_millis() as u32;
+                            let telemetry = crate::adaptive::TransferTelemetry {
+                                job_id: String::new(),
+                                rtt_ms: rtt,
+                                speed_bytes_per_sec: 0.0,
+                                chunk_size: crate::adaptive::DEFAULT_CHUNK_SIZE,
+                                route: crate::adaptive::ConnectionRoute::DirectLan,
+                                packet_loss_pct: 0.0,
+                            };
+                            if let Ok(json) = serde_json::to_string(&telemetry) {
+                                dispatch_event(DZ_EVENT_TELEMETRY, &json);
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                let err_json = serde_json::json!({
+                    "job_id": "",
+                    "error_code": -15,
+                    "message": format!("Ping to {} failed: {}", addr, e)
+                })
+                .to_string();
+                dispatch_event(DZ_EVENT_ERROR, &err_json);
             }
         }
     });

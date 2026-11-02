@@ -83,9 +83,10 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IFileSystemStorage>(sp => 
             new LocalFileSystemStorage(downloadDir, sp.GetRequiredService<ISecurityService>()));
 
-        // Repositories
+        // Repositories & Backup
         services.AddSingleton<ITransferRepository>(_ => new SqliteTransferRepository(dbPath));
         services.AddSingleton<IDeviceRepository>(_ => new SqliteDeviceRepository(dbPath));
+        services.AddSingleton<IBackupService, BackupService>();
 
         // Engine & Orchestrator
         services.AddSingleton<IDropZoneEngine, DropZoneEngineInterop>();
@@ -99,6 +100,7 @@ public partial class App : Avalonia.Application
             sp.GetRequiredService<ITransferRepository>(),
             sp.GetRequiredService<IFileSystemStorage>(),
             sp.GetRequiredService<ISecurityService>(),
+            sp.GetRequiredService<IBackupService>(),
             downloadDir
         ));
     }

@@ -36,7 +36,9 @@ $env:DOTNET_CLI_TELEMETRY_OPTOUT="1"; $env:MSBUILDUSESERVER="0"; dotnet test tes
 
 ## 3. Test Suite Inventory
 
-### Rust Engine Tests (11 Tests – All Passing)
+### Rust Engine Tests (13 Tests – All Passing)
+* `adaptive::tests::test_adaptive_scaling_up_on_fast_lan` – Dynamic chunk size expansion (up to 4MB) for gigabit/10GbE low-latency connections.
+* `adaptive::tests::test_adaptive_scaling_down_on_lossy_wan` – Dynamic chunk size downscaling (to 256KB-512KB) for high-latency lossy WAN links.
 * `nat::stun::tests::test_stun_binding_request_and_response_parsing` – RFC 5389 STUN Binding Request building and XOR-MAPPED-ADDRESS parsing.
 * `nat::turn::tests::test_turn_allocate_request_building` – RFC 5766 TURN allocation framing.
 * `nat::turn::tests::test_turn_channel_data_roundtrip` – RFC 5766 ChannelData encapsulation for blind relaying.
@@ -49,7 +51,7 @@ $env:DOTNET_CLI_TELEMETRY_OPTOUT="1"; $env:MSBUILDUSESERVER="0"; dotnet test tes
 * `protocol::tests::test_header_serialization` – 16-byte `DZP1` fixed header serialization/deserialization.
 * `protocol::tests::test_chunk_descriptor_serialization` – 64-byte chunk descriptor framing.
 
-### .NET Tests (38 Tests – All Passing)
+### .NET Tests (41 Tests – All Passing)
 * **Domain & Queue**:
   * Manifest generation, FileItem model integrity, Job model state transitions.
   * TransferQueue slot concurrency limit enforcement, FIFO priority order, item lookup.
@@ -60,9 +62,14 @@ $env:DOTNET_CLI_TELEMETRY_OPTOUT="1"; $env:MSBUILDUSESERVER="0"; dotnet test tes
   * Heuristic analysis: RTLO Unicode override spoofing (`\u202E`).
   * Heuristic analysis: Disguised double extensions (`.pdf.exe`, `.jpg.vbs`).
   * Quarantine lifecycle: isolation into `%LOCALAPPDATA%/DropZone/Quarantine/`, read-only attribution, `.meta.json` tracking, safe restoration, permanent deletion.
-* **Database & Persistence**:
+* **Database & Device Permissions**:
   * SQLite WAL mode initialization, job creation, progress tracking, status transitions.
   * Device repository upsert, trust level promotion (`Trusted`), revocation (`Prompt`), and blocking (`Blocked`).
+  * Granular `DevicePermissions`: auto-accept boolean toggles, byte thresholds (100MB / 50MB), custom download directories, and revocation timestamps.
+* **Encrypted Vault Backup**:
+  * Encrypted backup generation with user passphrase (PBKDF2 100,000 iterations + AES-256-GCM authenticated envelope `DZBK1`).
+  * Full roundtrip restoration of paired devices, keys, and transfer audit history.
+  * Authentication tag verification failure and tamper resistance against corrupted ciphertexts or wrong passphrases.
 * **Interop & Native Bridge**:
   * Pinned unmanaged callback registration, asynchronous event dispatching.
   * Job pause, resume, cancel dispatch verification.

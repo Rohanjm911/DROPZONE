@@ -59,5 +59,13 @@ public partial class MainWindow : Window
             await vm.HandleDroppedFilesAsync(paths);
         }
     }
+
+    private async void OnExportBackupClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        var box = this.FindControl<TextBox>("BackupPassphraseBox");
+        var passphrase = box?.Text ?? string.Empty;
+        await vm.ExportEncryptedBackupAsync(passphrase);
+    }
 }
 
