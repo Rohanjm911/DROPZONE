@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.dropzone.filetransfer"
+          android:versionCode="1"
+          android:versionName="1.0.0">
+
+  <!-- Core Networking & Discovery Permissions -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+  <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
+  <!-- Background Execution & Sleep Prevention -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+  <!-- Media & Storage Access -->
+  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+  <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+
+  <application android:label="DROPZONE"
+               android:icon="@mipmap/ic_launcher"
+               android:roundIcon="@mipmap/ic_launcher_round"
+               android:theme="@android:style/Theme.Material.NoActionBar"
+               android:requestLegacyExternalStorage="false"
+               android:networkSecurityConfig="@xml/network_security_config">
+
+    <activity android:name=".MainActivity"
+              android:exported="true"
+              android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+              android:windowSoftInputMode="adjustResize"
+              android:launchMode="singleTask">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+      <!-- Deep link / Send intent handler for receiving files shared from other apps -->
+      <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <action android:name="android.intent.action.SEND_MULTIPLE" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="*/*" />
+      </intent-filter>
+    </activity>
+
+    <!-- Foreground Transfer Service for uninterrupted large-file transfers -->
+    <service android:name=".DropZoneTransferForegroundService"
+             android:exported="false"
+             android:foregroundServiceType="dataSync" />
+
+  </application>
+</manifest>
+

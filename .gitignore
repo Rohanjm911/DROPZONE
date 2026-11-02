@@ -43,3 +43,25 @@ desktop.ini
 engine/target/
 **/*.rs.bk
 Cargo.lock
+
+# Compiled binary packages in root (present locally for distribution)
+/*.exe
+/*.dll
+DropZone-Desktop-Windows-x64/*.exe
+DropZone-Desktop-Windows-x64/*.dll
+DropZone-Desktop-Windows-x64/*.pdb
+DropZone-Desktop-Portable/*.exe
+DropZone-Desktop-Portable/*.dll
+DropZone-Desktop-Portable/*.pdb
+DropZone-Desktop-Portable/*.json
+DropZone-Native-Engine/*.dll
+DropZone-Native-Engine/*.lib
+DropZone-Android/*.dll
+DropZone-Android/*.pdb
+DropZone-Android/*.json
+DropZone-Android/*.exe
+DropZone-iOS/*.dll
+DropZone-iOS/*.pdb
+DropZone-iOS/*.json
+DropZone-iOS/*.exe
+
