@@ -54,6 +54,7 @@ DropZone-Desktop-Portable/*.exe
 DropZone-Desktop-Portable/*.dll
 DropZone-Desktop-Portable/*.pdb
 DropZone-Desktop-Portable/*.json
+DropZone-Desktop-Portable/win-x64/
 DropZone-Native-Engine/*.dll
 DropZone-Native-Engine/*.lib
 DropZone-Android/*.dll

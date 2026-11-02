@@ -12,10 +12,17 @@ public sealed class SqliteTransferRepository : ITransferRepository
 
     public SqliteTransferRepository(string databasePath)
     {
-        var dir = Path.GetDirectoryName(Path.GetFullPath(databasePath));
-        if (!string.IsNullOrEmpty(dir))
+        try
         {
-            Directory.CreateDirectory(dir);
+            var dir = Path.GetDirectoryName(Path.GetFullPath(databasePath));
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+        }
+        catch
+        {
+            // Ignore directory creation error if handled upstream
         }
         _connectionString = new SqliteConnectionStringBuilder
         {
