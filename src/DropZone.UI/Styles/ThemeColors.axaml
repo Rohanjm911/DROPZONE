@@ -1,0 +1,32 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Styles.Resources>
+    <!-- Default Dark Theme Tokens -->
+    <Color x:Key="DzBgColor">#121214</Color>
+    <SolidColorBrush x:Key="DzBgBrush" Color="{StaticResource DzBgColor}" />
+
+    <Color x:Key="DzSidebarBgColor">#16161A</Color>
+    <SolidColorBrush x:Key="DzSidebarBgBrush" Color="{StaticResource DzSidebarBgColor}" />
+
+    <Color x:Key="DzSurfaceColor">#1E1E24</Color>
+    <SolidColorBrush x:Key="DzSurfaceBrush" Color="{StaticResource DzSurfaceColor}" />
+
+    <Color x:Key="DzSurfaceHoverColor">#282830</Color>
+    <SolidColorBrush x:Key="DzSurfaceHoverBrush" Color="{StaticResource DzSurfaceHoverColor}" />
+
+    <Color x:Key="DzBorderColor">#2E2E38</Color>
+    <SolidColorBrush x:Key="DzBorderBrush" Color="{StaticResource DzBorderColor}" />
+
+    <Color x:Key="DzTextPrimaryColor">#F3F3F6</Color>
+    <SolidColorBrush x:Key="DzTextPrimaryBrush" Color="{StaticResource DzTextPrimaryColor}" />
+
+    <Color x:Key="DzTextSecondaryColor">#9A9AA6</Color>
+    <SolidColorBrush x:Key="DzTextSecondaryBrush" Color="{StaticResource DzTextSecondaryColor}" />
+
+    <Color x:Key="DzTextMutedColor">#646472</Color>
+    <SolidColorBrush x:Key="DzTextMutedBrush" Color="{StaticResource DzTextMutedColor}" />
+  </Styles.Resources>
+
+</Styles>
+

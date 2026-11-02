@@ -1,0 +1,45 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+target/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio / VS Code
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.swp
+*.lock
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.nupkg
+*.snupkg
+
+# Databases & local storage
+*.db
+*.db-shm
+*.db-wal
+dropzone.db
+
+# OS generated
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+
+# Rust
+engine/target/
+**/*.rs.bk
+Cargo.lock

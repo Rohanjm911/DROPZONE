@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="../tests/DropZone.UnitTests/DropZone.UnitTests.csproj" />
+  <Project Path="DropZone.Application/DropZone.Application.csproj" />
+  <Project Path="DropZone.Domain/DropZone.Domain.csproj" />
+  <Project Path="DropZone.Engine.Interop/DropZone.Engine.Interop.csproj" />
+  <Project Path="DropZone.Infrastructure/DropZone.Infrastructure.csproj" />
+  <Project Path="DropZone.UI/DropZone.UI.csproj" />
+</Solution>

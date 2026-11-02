@@ -1,0 +1,40 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Brand Accents (Solid Colors, Zero Gradients) -->
+  <Color x:Key="DzPrimaryColor">#1058FF</Color>
+  <SolidColorBrush x:Key="DzPrimaryBrush" Color="{StaticResource DzPrimaryColor}" />
+
+  <Color x:Key="DzPrimaryHoverColor">#0D47D9</Color>
+  <SolidColorBrush x:Key="DzPrimaryHoverBrush" Color="{StaticResource DzPrimaryHoverColor}" />
+
+  <Color x:Key="DzPrimaryPressedColor">#0938B0</Color>
+  <SolidColorBrush x:Key="DzPrimaryPressedBrush" Color="{StaticResource DzPrimaryPressedColor}" />
+
+  <!-- Status Indicators -->
+  <Color x:Key="DzSuccessColor">#10B981</Color>
+  <SolidColorBrush x:Key="DzSuccessBrush" Color="{StaticResource DzSuccessColor}" />
+
+  <Color x:Key="DzWarningColor">#F59E0B</Color>
+  <SolidColorBrush x:Key="DzWarningBrush" Color="{StaticResource DzWarningColor}" />
+
+  <Color x:Key="DzDangerColor">#EF4444</Color>
+  <SolidColorBrush x:Key="DzDangerBrush" Color="{StaticResource DzDangerColor}" />
+
+  <Color x:Key="DzInfoColor">#3B82F6</Color>
+  <SolidColorBrush x:Key="DzInfoBrush" Color="{StaticResource DzInfoColor}" />
+
+  <!-- Typography Sizes -->
+  <x:Double x:Key="DzFontSizeSmall">12</x:Double>
+  <x:Double x:Key="DzFontSizeBody">14</x:Double>
+  <x:Double x:Key="DzFontSizeSubhead">16</x:Double>
+  <x:Double x:Key="DzFontSizeTitle">20</x:Double>
+  <x:Double x:Key="DzFontSizeHero">26</x:Double>
+
+  <!-- Corner Radii -->
+  <CornerRadius x:Key="DzRadiusSmall">4</CornerRadius>
+  <CornerRadius x:Key="DzRadiusMedium">8</CornerRadius>
+  <CornerRadius x:Key="DzRadiusLarge">12</CornerRadius>
+
+</ResourceDictionary>
+

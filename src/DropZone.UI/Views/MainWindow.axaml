@@ -1,0 +1,312 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DropZone.UI.ViewModels"
+        x:Class="DropZone.UI.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="DROPZONE – Move Files. Not Your Privacy."
+        Width="960" Height="680"
+        MinWidth="800" MinHeight="550"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource DzBgBrush}"
+        DragDrop.AllowDrop="True">
+
+  <Grid RowDefinitions="Auto, *">
+
+    <!-- TOP HEADER BAR -->
+    <Border Grid.Row="0" Background="{DynamicResource DzSidebarBgBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="0,0,0,1" Padding="20,14">
+      <Grid ColumnDefinitions="Auto, *, Auto">
+        <!-- Brand / Identity -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <Border Background="{DynamicResource DzPrimaryBrush}" CornerRadius="6" Width="28" Height="28">
+            <TextBlock Text="DZ" Foreground="White" FontWeight="Bold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <StackPanel Spacing="1">
+            <TextBlock Text="DROPZONE" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource DzTextPrimaryBrush}" LetterSpacing="0.5" />
+            <TextBlock Text="Move Files. Not Your Privacy." FontSize="11" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- Diagnostics / Telemetry -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+          <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="10,4">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <Ellipse Width="8" Height="8" Fill="{DynamicResource DzSuccessBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="LAN Engine: Active (52490)" FontSize="12" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+            </StackPanel>
+          </Border>
+
+          <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="10,4">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <TextBlock Text="Speed:" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+              <TextBlock Text="{Binding TotalSpeedFormatted}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource DzPrimaryBrush}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- MAIN BODY -->
+    <Grid Grid.Row="1" ColumnDefinitions="200, *">
+
+      <!-- LEFT NAVIGATION RAIL -->
+      <Border Grid.Column="0" Background="{DynamicResource DzSidebarBgBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="0,0,1,0" Padding="12,16">
+        <StackPanel Spacing="6">
+          <Button Classes="NavBtn" Command="{Binding SwitchTabCommand}" CommandParameter="Transfers"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" CornerRadius="6">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Text="Transfers" FontSize="13" FontWeight="SemiBold" />
+              <Border Background="{DynamicResource DzPrimaryBrush}" CornerRadius="10" Padding="6,1" IsVisible="{Binding ActiveTransfers.Count}">
+                <TextBlock Text="{Binding ActiveTransfers.Count}" FontSize="11" Foreground="White" FontWeight="Bold" />
+              </Border>
+            </StackPanel>
+          </Button>
+
+          <Button Classes="NavBtn" Command="{Binding SwitchTabCommand}" CommandParameter="Devices"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" CornerRadius="6">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Text="Nearby Devices" FontSize="13" FontWeight="SemiBold" />
+              <Border Background="{DynamicResource DzSurfaceBrush}" CornerRadius="10" Padding="6,1" IsVisible="{Binding NearbyDevices.Count}">
+                <TextBlock Text="{Binding NearbyDevices.Count}" FontSize="11" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+              </Border>
+            </StackPanel>
+          </Button>
+
+          <Button Classes="NavBtn" Command="{Binding SwitchTabCommand}" CommandParameter="History"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" CornerRadius="6">
+            <TextBlock Text="History" FontSize="13" FontWeight="SemiBold" />
+          </Button>
+
+          <Button Classes="NavBtn" Command="{Binding SwitchTabCommand}" CommandParameter="Settings"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" CornerRadius="6">
+            <TextBlock Text="Settings" FontSize="13" FontWeight="SemiBold" />
+          </Button>
+        </StackPanel>
+      </Border>
+
+      <!-- RIGHT WORKSPACE -->
+      <Grid Grid.Column="1" Margin="20">
+
+        <!-- 1. TRANSFERS TAB -->
+        <Grid RowDefinitions="Auto, *" IsVisible="{Binding CurrentTab, Converter={x:Static StringConverters.IsNullOrEmpty}, ConverterParameter=False}">
+          <!-- DROP ZONE TARGET -->
+          <Border Grid.Row="0" Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzPrimaryBrush}" 
+                  BorderThickness="2" CornerRadius="8" Padding="24,20" Margin="0,0,0,16">
+            <Grid ColumnDefinitions="*, Auto">
+              <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                <TextBlock Text="Drag and drop files or folders here" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+                <TextBlock Text="Files stream directly device-to-device with ChaCha20-Poly1305 encryption." FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+              </StackPanel>
+
+              <Button Grid.Column="1" Content="Browse Files" Click="OnBrowseFilesClick"
+                      Background="{DynamicResource DzPrimaryBrush}" Foreground="White" 
+                      FontWeight="SemiBold" Padding="16,8" CornerRadius="6" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+
+          <!-- ACTIVE TRANSFERS LIST -->
+          <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="10">
+              <TextBlock Text="Active Transfers" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource DzTextSecondaryBrush}" Margin="0,0,0,4" />
+
+              <TextBlock Text="No transfers currently active. Drop a file above to begin." 
+                         FontSize="13" Foreground="{DynamicResource DzTextMutedBrush}" 
+                         IsVisible="{Binding !ActiveTransfers.Count}" Margin="0,8" />
+
+              <ItemsControl ItemsSource="{Binding ActiveTransfers}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TransferItemViewModel">
+                    <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" 
+                            BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                      <Grid RowDefinitions="Auto, Auto, Auto" ColumnDefinitions="*, Auto">
+                        <!-- Top Row: File Name & Direction -->
+                        <StackPanel Grid.Row="0" Grid.Column="0" Spacing="2">
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding PrimaryFileName}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+                            <TextBlock Text="{Binding AdditionalFilesLabel}" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" VerticalAlignment="Center" />
+                          </StackPanel>
+                          <TextBlock Text="{Binding DirectionLabel, StringFormat='{}{0} '}" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}">
+                            <Run Text="{Binding PeerName}" FontWeight="SemiBold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+                          </TextBlock>
+                        </StackPanel>
+
+                        <!-- State Badge -->
+                        <Border Grid.Row="0" Grid.Column="1" Background="{Binding StateColor}" CornerRadius="4" Padding="8,3" VerticalAlignment="Top">
+                          <TextBlock Text="{Binding StateBadge}" FontSize="11" FontWeight="Bold" Foreground="White" />
+                        </Border>
+
+                        <!-- Middle Row: Progress Bar -->
+                        <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Height="6" Minimum="0" Maximum="100" 
+                                     Value="{Binding Progress}" Margin="0,12,0,8"
+                                     Foreground="{DynamicResource DzPrimaryBrush}" Background="{DynamicResource DzBorderBrush}" />
+
+                        <!-- Bottom Row: Stats & Controls -->
+                        <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="*, Auto">
+                          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding FormattedProgress}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+                            <TextBlock Text="{Binding FormattedSize}" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+                            <TextBlock Text="{Binding FormattedSpeed}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource DzPrimaryBrush}" />
+                            <TextBlock Text="{Binding FormattedEta}" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+                          </StackPanel>
+
+                          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                            <Button Content="Pause" Command="{Binding PauseCommand}" IsVisible="{Binding CanPause}" 
+                                    FontSize="11" Padding="10,4" CornerRadius="4" />
+                            <Button Content="Resume" Command="{Binding ResumeCommand}" IsVisible="{Binding CanResume}" 
+                                    Background="{DynamicResource DzPrimaryBrush}" Foreground="White" FontSize="11" Padding="10,4" CornerRadius="4" />
+                            <Button Content="Cancel" Command="{Binding CancelCommand}" IsVisible="{Binding CanCancel}" 
+                                    Background="{DynamicResource DzDangerBrush}" Foreground="White" FontSize="11" Padding="10,4" CornerRadius="4" />
+                          </StackPanel>
+                        </Grid>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+
+        <!-- 2. NEARBY DEVICES TAB -->
+        <ScrollViewer IsVisible="{Binding CurrentTab, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Devices'}">
+          <StackPanel Spacing="12">
+            <TextBlock Text="Discovered Peers on Local Network (mDNS)" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+            <TextBlock Text="Devices broadcasting DropZone beacons on your LAN appear automatically." FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" Margin="0,0,0,8" />
+
+            <TextBlock Text="No nearby peers discovered yet. Ensure other devices are on the same Wi-Fi / LAN." 
+                       FontSize="13" Foreground="{DynamicResource DzTextMutedBrush}" 
+                       IsVisible="{Binding !NearbyDevices.Count}" Margin="0,8" />
+
+            <ItemsControl ItemsSource="{Binding NearbyDevices}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DeviceItemViewModel">
+                  <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" 
+                          BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="Auto, *, Auto">
+                      <!-- Online Status Indicator -->
+                      <Ellipse Grid.Column="0" Width="10" Height="10" Fill="{Binding StatusColor}" Margin="0,0,14,0" VerticalAlignment="Center" />
+
+                      <!-- Info -->
+                      <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+                          <Border Background="{Binding TrustColor}" CornerRadius="4" Padding="6,2">
+                            <TextBlock Text="{Binding TrustBadge}" FontSize="10" FontWeight="Bold" Foreground="White" />
+                          </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Endpoint}" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+                      </StackPanel>
+
+                      <!-- Action Buttons -->
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button Content="Toggle Trust" Command="{Binding ToggleTrustCommand}" FontSize="12" Padding="10,6" CornerRadius="4" />
+                        <Button Content="Send Files" Command="{Binding SendFilesCommand}" 
+                                Background="{DynamicResource DzPrimaryBrush}" Foreground="White" FontWeight="SemiBold" FontSize="12" Padding="14,6" CornerRadius="4" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- 3. HISTORY TAB -->
+        <ScrollViewer IsVisible="{Binding CurrentTab, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='History'}">
+          <StackPanel Spacing="12">
+            <TextBlock Text="Transfer History &amp; Audits" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+            <TextBlock Text="Persistent local log of verified transfers stored securely in SQLite." FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" Margin="0,0,0,8" />
+
+            <TextBlock Text="No past transfers recorded." 
+                       FontSize="13" Foreground="{DynamicResource DzTextMutedBrush}" 
+                       IsVisible="{Binding !HistoryTransfers.Count}" Margin="0,8" />
+
+            <ItemsControl ItemsSource="{Binding HistoryTransfers}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:TransferItemViewModel">
+                  <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" 
+                          BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,6">
+                    <Grid ColumnDefinitions="*, Auto">
+                      <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{Binding PrimaryFileName}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+                        <TextBlock Text="{Binding FormattedSize}" FontSize="11" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+                      </StackPanel>
+
+                      <Border Grid.Column="1" Background="{Binding StateColor}" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StateBadge}" FontSize="10" FontWeight="Bold" Foreground="White" />
+                      </Border>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- 4. SETTINGS TAB -->
+        <ScrollViewer IsVisible="{Binding CurrentTab, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Settings'}">
+          <StackPanel Spacing="16" MaxWidth="600" HorizontalAlignment="Left">
+            <TextBlock Text="Application Settings" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+
+            <!-- Device Name -->
+            <StackPanel Spacing="6">
+              <TextBlock Text="Device Name (Broadcasted on LAN)" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+              <TextBox Text="{Binding DeviceName}" Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" CornerRadius="6" Padding="10,8" />
+            </StackPanel>
+
+            <!-- Download Location -->
+            <StackPanel Spacing="6">
+              <TextBlock Text="Download Directory" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+              <TextBox Text="{Binding DownloadPath}" IsReadOnly="True" Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" CornerRadius="6" Padding="10,8" />
+            </StackPanel>
+
+            <!-- Security Toggles -->
+            <StackPanel Spacing="10" Margin="0,8,0,0">
+              <CheckBox IsChecked="{Binding AutoAcceptTrusted}" Content="Auto-accept incoming transfers from Trusted Devices" FontSize="13" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+            </StackPanel>
+
+            <!-- Security Guarantees Panel -->
+            <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,16,0,0">
+              <StackPanel Spacing="8">
+                <TextBlock Text="Active Security Posture" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource DzSuccessBrush}" />
+                <TextBlock Text="• Authenticated End-to-End Encryption: ChaCha20-Poly1305 (AEAD)" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+                <TextBlock Text="• Integrity Verification: Dual-Layer SHA-256 (Chunk &amp; Full File)" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+                <TextBlock Text="• Directory Traversal Protection: Strict path sanitization enabled" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+                <TextBlock Text="• Automatic Execution: Never executed, quarantine isolation active" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- INCOMING TRANSFER APPROVAL DIALOG OVERLAY -->
+        <Border Background="#CC000000" IsVisible="{Binding HasIncomingRequest}" 
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+          <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="1" 
+                  CornerRadius="8" Padding="24" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Spacing="14">
+              <TextBlock Text="Incoming Transfer Request" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+              <TextBlock Text="{Binding IncomingRequest.SenderDeviceName, StringFormat='Device &quot;{0}&quot; wants to send you files.'}" FontSize="13" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+
+              <Border Background="{DynamicResource DzSidebarBgBrush}" CornerRadius="6" Padding="12">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="{Binding IncomingRequest.FileCount, StringFormat='Files count: {0}'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+                  <TextBlock Text="{Binding IncomingRequest.TotalBytes, StringFormat='Total size: {0} bytes'}" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+                </StackPanel>
+              </Border>
+
+              <Grid ColumnDefinitions="*, *" Margin="0,10,0,0">
+                <Button Grid.Column="0" Content="Decline" Command="{Binding RejectIncomingCommand}" 
+                        Background="{DynamicResource DzDangerBrush}" Foreground="White" FontWeight="SemiBold" 
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,6,0" Padding="12,8" CornerRadius="6" />
+                <Button Grid.Column="1" Content="Approve Transfer" Command="{Binding ApproveIncomingCommand}" 
+                        Background="{DynamicResource DzPrimaryBrush}" Foreground="White" FontWeight="SemiBold" 
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="6,0,0,0" Padding="12,8" CornerRadius="6" />
+              </Grid>
+            </StackPanel>
+          </Border>
+        </Border>
+
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>
+
