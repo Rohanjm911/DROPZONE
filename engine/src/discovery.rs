@@ -28,6 +28,7 @@ impl DiscoveryManager {
 
     pub fn start<F>(
         &self,
+        handle: &tokio::runtime::Handle,
         device_id: String,
         device_name: String,
         server_port: u16,
@@ -46,7 +47,7 @@ impl DiscoveryManager {
         let listener_running = is_running.clone();
         let listener_cb = on_discovered.clone();
         let my_id = device_id.clone();
-        tokio::spawn(async move {
+        handle.spawn(async move {
             let addr = format!("0.0.0.0:{}", DISCOVERY_PORT);
             if let Ok(socket) = UdpSocket::bind(&addr).await {
                 let _ = socket.set_broadcast(true);
@@ -71,7 +72,7 @@ impl DiscoveryManager {
 
         // Spawn UDP broadcaster
         let broadcaster_running = is_running.clone();
-        tokio::spawn(async move {
+        handle.spawn(async move {
             if let Ok(socket) = UdpSocket::bind("0.0.0.0:0").await {
                 let _ = socket.set_broadcast(true);
                 let broadcast_addr: SocketAddr =

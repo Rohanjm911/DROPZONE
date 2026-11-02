@@ -254,37 +254,48 @@ pub unsafe extern "C" fn dropzone_engine_start_discovery(
     device_name: *const c_char,
     port: u16,
 ) -> i32 {
-    let state = match get_state() {
-        Some(s) => s,
-        None => {
-            set_last_error("Engine not initialized");
-            return -1;
+    let result = std::panic::catch_unwind(|| {
+        let state = match get_state() {
+            Some(s) => s,
+            None => {
+                set_last_error("Engine not initialized");
+                return -1;
+            }
+        };
+
+        let dev_name = if device_name.is_null() {
+            "DropZone Device".to_string()
+        } else {
+            CStr::from_ptr(device_name)
+                .to_str()
+                .unwrap_or("DropZone Device")
+                .to_string()
+        };
+
+        let dev_id = {
+            let cfg = state.config.lock().unwrap();
+            cfg.as_ref()
+                .map(|c| c.device_id.clone())
+                .unwrap_or_else(|| "dz-dev-unknown".to_string())
+        };
+
+        let _guard = state.runtime.enter();
+        state
+            .discovery
+            .start(state.runtime.handle(), dev_id, dev_name, port, |discovered_json| {
+                dispatch_event(DZ_EVENT_PEER_DISCOVERED, &discovered_json);
+            });
+
+        0
+    });
+
+    match result {
+        Ok(code) => code,
+        Err(_) => {
+            set_last_error("Panic in dropzone_engine_start_discovery");
+            -99
         }
-    };
-
-    let dev_name = if device_name.is_null() {
-        "DropZone Device".to_string()
-    } else {
-        CStr::from_ptr(device_name)
-            .to_str()
-            .unwrap_or("DropZone Device")
-            .to_string()
-    };
-
-    let dev_id = {
-        let cfg = state.config.lock().unwrap();
-        cfg.as_ref()
-            .map(|c| c.device_id.clone())
-            .unwrap_or_else(|| "dz-dev-unknown".to_string())
-    };
-
-    state
-        .discovery
-        .start(dev_id, dev_name, port, |discovered_json| {
-            dispatch_event(DZ_EVENT_PEER_DISCOVERED, &discovered_json);
-        });
-
-    0
+    }
 }
 
 #[no_mangle]
