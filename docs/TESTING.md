@@ -29,7 +29,42 @@ cargo test --offline
 
 ### Run C# Unit & Integration Tests:
 ```powershell
-cd src
-$env:DOTNET_CLI_TELEMETRY_OPTOUT="1"; $env:MSBUILDUSESERVER="0"; dotnet test DropZone.sln
+$env:DOTNET_CLI_TELEMETRY_OPTOUT="1"; $env:MSBUILDUSESERVER="0"; dotnet test tests/DropZone.UnitTests/DropZone.UnitTests.csproj --no-build
 ```
+
+---
+
+## 3. Test Suite Inventory
+
+### Rust Engine Tests (11 Tests – All Passing)
+* `nat::stun::tests::test_stun_binding_request_and_response_parsing` – RFC 5389 STUN Binding Request building and XOR-MAPPED-ADDRESS parsing.
+* `nat::turn::tests::test_turn_allocate_request_building` – RFC 5766 TURN allocation framing.
+* `nat::turn::tests::test_turn_channel_data_roundtrip` – RFC 5766 ChannelData encapsulation for blind relaying.
+* `crypto::tests::test_hmac_sha256_rfc4231_case2` – RFC 2104 / RFC 4231 HMAC-SHA256 test vector validation.
+* `crypto::tests::test_hkdf_expand_and_extract` – RFC 5869 HKDF-SHA256 PRK and OKM derivation.
+* `crypto::tests::test_x25519_key_agreement_and_sas` – Curve25519 DH shared secret agreement, bidirectional session key isolation, and 6-digit SAS numeric PIN match.
+* `crypto::tests::test_sha256` – SHA-256 standard test vector.
+* `crypto::tests::test_aead_roundtrip` – ChaCha20-Poly1305 encryption/decryption with sequence nonces.
+* `pairing::tests::test_pairing_manager_flow` – End-to-end pairing state machine (request, response, SAS match, user confirmation).
+* `protocol::tests::test_header_serialization` – 16-byte `DZP1` fixed header serialization/deserialization.
+* `protocol::tests::test_chunk_descriptor_serialization` – 64-byte chunk descriptor framing.
+
+### .NET Tests (38 Tests – All Passing)
+* **Domain & Queue**:
+  * Manifest generation, FileItem model integrity, Job model state transitions.
+  * TransferQueue slot concurrency limit enforcement, FIFO priority order, item lookup.
+  * Windowed EMA transfer speed estimator, ceiling ETA calculation, state reset.
+* **Security & Quarantine**:
+  * Path traversal sanitization (rejection of `..`, drive letters, control characters, null bytes).
+  * Windows DOS device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-4`, `LPT1-3`).
+  * Heuristic analysis: RTLO Unicode override spoofing (`\u202E`).
+  * Heuristic analysis: Disguised double extensions (`.pdf.exe`, `.jpg.vbs`).
+  * Quarantine lifecycle: isolation into `%LOCALAPPDATA%/DropZone/Quarantine/`, read-only attribution, `.meta.json` tracking, safe restoration, permanent deletion.
+* **Database & Persistence**:
+  * SQLite WAL mode initialization, job creation, progress tracking, status transitions.
+  * Device repository upsert, trust level promotion (`Trusted`), revocation (`Prompt`), and blocking (`Blocked`).
+* **Interop & Native Bridge**:
+  * Pinned unmanaged callback registration, asynchronous event dispatching.
+  * Job pause, resume, cancel dispatch verification.
+  * Native X25519 identity key generation and fingerprint extraction.
 

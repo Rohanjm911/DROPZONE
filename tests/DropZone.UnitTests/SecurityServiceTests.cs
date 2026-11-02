@@ -55,4 +55,68 @@ public class SecurityServiceTests
         Assert.Equal(64, hash.Length);
         Assert.Equal("905fb293d8c506cd043536f62b5857df620878e80c6ef7f594ac3f2c7ed70b56", hash);
     }
+
+    [Fact]
+    public void AnalyzeFile_DetectsDoubleExtensionsAndRtloSpoofing()
+    {
+        // RTLO Unicode spoofing
+        var rtlo = _service.AnalyzeFile("invoice\u202Efdp.exe");
+        Assert.True(rtlo.IsSuspicious);
+        Assert.Equal(Domain.Models.ThreatRiskLevel.Critical, rtlo.RiskLevel);
+
+        // Disguised double extension
+        var disguised = _service.AnalyzeFile("company_financials.pdf.exe");
+        Assert.True(disguised.IsSuspicious);
+        Assert.Equal(Domain.Models.ThreatRiskLevel.Critical, disguised.RiskLevel);
+        Assert.Contains("double extension", disguised.Reason);
+
+        // Standard executable
+        var standardExe = _service.AnalyzeFile("setup.msi");
+        Assert.True(standardExe.IsSuspicious);
+        Assert.Equal(Domain.Models.ThreatRiskLevel.High, standardExe.RiskLevel);
+
+        // Clean file
+        var clean = _service.AnalyzeFile("contract.docx");
+        Assert.False(clean.IsSuspicious);
+        Assert.Equal(Domain.Models.ThreatRiskLevel.None, clean.RiskLevel);
+    }
+
+    [Fact]
+    public async Task Quarantine_Lifecycle_QuarantinesRestoresAndDeletes()
+    {
+        var tempQuarantineDir = Path.Combine(Path.GetTempPath(), $"dz_quarantine_test_{Guid.NewGuid():N}");
+        var customSecurity = new SecurityService(tempQuarantineDir);
+
+        try
+        {
+            var tempFile = Path.Combine(Path.GetTempPath(), $"malicious_{Guid.NewGuid():N}.exe");
+            await File.WriteAllTextAsync(tempFile, "SUSPICIOUS_PAYLOAD_TEST");
+
+            // 1. Quarantine file
+            var record = await customSecurity.QuarantineFileAsync(tempFile, "malicious.exe", "Test Threat", "peer-123");
+            Assert.False(File.Exists(tempFile));
+            Assert.True(File.Exists(record.QuarantinedFilePath));
+
+            // 2. Query quarantined files
+            var list = await customSecurity.GetQuarantinedFilesAsync();
+            Assert.Contains(list, r => r.Id == record.Id && r.OriginalFileName == Path.GetFileName(tempFile));
+
+            // 3. Restore file
+            var restoredPath = Path.Combine(Path.GetTempPath(), $"restored_{Guid.NewGuid():N}.exe");
+            var restored = await customSecurity.RestoreQuarantinedFileAsync(record.Id, restoredPath);
+            Assert.True(restored);
+            Assert.True(File.Exists(restoredPath));
+            Assert.Equal("SUSPICIOUS_PAYLOAD_TEST", await File.ReadAllTextAsync(restoredPath));
+
+            // 4. Delete restored
+            File.Delete(restoredPath);
+        }
+        finally
+        {
+            if (Directory.Exists(tempQuarantineDir))
+            {
+                Directory.Delete(tempQuarantineDir, recursive: true);
+            }
+        }
+    }
 }

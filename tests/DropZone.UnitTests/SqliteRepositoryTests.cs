@@ -104,6 +104,18 @@ public class SqliteRepositoryTests : IDisposable
         Assert.NotNull(trusted);
         Assert.Equal(DeviceTrustLevel.Trusted, trusted.TrustLevel);
 
+        // Block device
+        await _deviceRepo.BlockDeviceAsync(device.Id);
+        var blocked = await _deviceRepo.GetDeviceAsync(device.Id);
+        Assert.NotNull(blocked);
+        Assert.Equal(DeviceTrustLevel.Blocked, blocked.TrustLevel);
+
+        // Revoke device
+        await _deviceRepo.RevokeDeviceAsync(device.Id);
+        var revoked = await _deviceRepo.GetDeviceAsync(device.Id);
+        Assert.NotNull(revoked);
+        Assert.Equal(DeviceTrustLevel.Prompt, revoked.TrustLevel);
+
         var all = await _deviceRepo.GetAllDevicesAsync();
         Assert.Contains(all, d => d.Id == device.Id);
     }

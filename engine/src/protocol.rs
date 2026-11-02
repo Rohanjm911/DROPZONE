@@ -8,6 +8,11 @@ pub const CHUNK_HEADER_SIZE: usize = 64; // 16 (uuid) + 4 (file_idx) + 8 (offset
 pub enum FrameType {
     HandshakeInit = 1,
     HandshakeAck = 2,
+    PairingRequest = 3,
+    PairingResponse = 4,
+    PairingConfirm = 5,
+    PairingReject = 6,
+    CandidateExchange = 8,
     TransferRequest = 16,
     TransferAccept = 17,
     TransferReject = 18,
@@ -25,6 +30,11 @@ impl FrameType {
         match val {
             1 => Some(FrameType::HandshakeInit),
             2 => Some(FrameType::HandshakeAck),
+            3 => Some(FrameType::PairingRequest),
+            4 => Some(FrameType::PairingResponse),
+            5 => Some(FrameType::PairingConfirm),
+            6 => Some(FrameType::PairingReject),
+            8 => Some(FrameType::CandidateExchange),
             16 => Some(FrameType::TransferRequest),
             17 => Some(FrameType::TransferAccept),
             18 => Some(FrameType::TransferReject),

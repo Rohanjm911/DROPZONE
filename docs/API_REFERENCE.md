@@ -65,6 +65,21 @@ int32_t dropzone_engine_resume_job(const char* job_id);
 
 // Cancels an ongoing transfer and cleans up connection resources.
 int32_t dropzone_engine_cancel_job(const char* job_id);
+
+// Generates an X25519 identity keypair and returns JSON { "public_key": "...", "fingerprint": "..." }.
+int32_t dropzone_engine_generate_identity_key(char* out_json, size_t max_len);
+
+// Initiates ephemeral X25519 pairing with a remote peer.
+int32_t dropzone_engine_start_pairing(const char* peer_ip, uint16_t peer_port);
+
+// Confirms or rejects an active SAS 6-digit PIN pairing verification.
+int32_t dropzone_engine_confirm_pairing(const char* peer_device_id, const char* pin_code, bool is_accepted);
+
+// Asynchronously queries an RFC 5389 STUN server to discover reflexive public IP/port candidate.
+int32_t dropzone_engine_test_stun(const char* stun_server, char* out_json, size_t max_len);
+
+// Gathers host and STUN reflexive candidates, emitting DZ_EVENT_NAT_CANDIDATE_DISCOVERED events.
+int32_t dropzone_engine_gather_nat_candidates(const char* stun_server);
 ```
 
 ---
@@ -85,6 +100,11 @@ Delivered across `dropzone_engine_set_event_callback`:
 | `31`| `DZ_EVENT_RESUMED` | `{"job_id": "...", "resumed_at_offset": 5242880}` |
 | `32`| `DZ_EVENT_CANCELLED` | `{"job_id": "...", "reason": "User cancelled"}` |
 | `40`| `DZ_EVENT_COMPLETED` | `{"job_id": "...", "verified_sha256": true}` |
+| `50`| `DZ_EVENT_PAIRING_REQUEST` | Incoming pairing request from remote peer |
+| `51`| `DZ_EVENT_PAIRING_PIN_DISPLAY` | `{"peer_device_id": "...", "peer_device_name": "...", "pin_code": "482915", "fingerprint": "...", "is_initiator": false}` |
+| `52`| `DZ_EVENT_PAIRING_COMPLETED` | `{"peer_device_id": "...", "fingerprint": "...", "success": true, "message": "..."}` |
+| `53`| `DZ_EVENT_PAIRING_FAILED` | `{"peer_device_id": "...", "success": false, "message": "..."}` |
+| `60`| `DZ_EVENT_NAT_CANDIDATE_DISCOVERED` | `{"candidate_type": "server_reflexive", "ip": "203.0.113.1", "port": 54320, "priority": 16777216}` |
 | `99`| `DZ_EVENT_ERROR` | `{"job_id": "...", "error_code": -5, "message": "Connection reset"}` |
 
 ---
@@ -107,6 +127,11 @@ public interface IDropZoneEngine : IAsyncDisposable
     Task PauseJobAsync(Guid jobId, CancellationToken ct = default);
     Task ResumeJobAsync(Guid jobId, CancellationToken ct = default);
     Task CancelJobAsync(Guid jobId, CancellationToken ct = default);
+    Task<IdentityKeyPair> GenerateIdentityKeyAsync(CancellationToken ct = default);
+    Task StartPairingAsync(string peerIp, ushort peerPort, CancellationToken ct = default);
+    Task<bool> ConfirmPairingAsync(string peerDeviceId, string pinCode, bool isAccepted, CancellationToken ct = default);
+    Task<NatCandidate?> TestStunAsync(string stunServer, CancellationToken ct = default);
+    Task GatherNatCandidatesAsync(string stunServer, CancellationToken ct = default);
 
     event EventHandler<EngineEvent>? EventReceived;
 }

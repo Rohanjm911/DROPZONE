@@ -35,6 +35,11 @@ All frames sent over a DROPZONE connection begin with a 16-byte fixed-length hea
 * **Frame Type** (`2 bytes`, Big-Endian):
   * `0x0001` : `HANDSHAKE_INIT`
   * `0x0002` : `HANDSHAKE_ACK`
+  * `0x0003` : `PAIRING_REQUEST` (Outbound device pairing payload)
+  * `0x0004` : `PAIRING_RESPONSE` (Inbound pairing response + DH parameters)
+  * `0x0005` : `PAIRING_CONFIRM` (User verified SAS PIN match)
+  * `0x0006` : `PAIRING_REJECT` (User declined or PIN mismatch)
+  * `0x0008` : `CANDIDATE_EXCHANGE` (ICE host/srflx/relay endpoints)
   * `0x0010` : `TRANSFER_REQUEST` (Manifest metadata in JSON)
   * `0x0011` : `TRANSFER_ACCEPT` (Approved with resume byte offset)
   * `0x0012` : `TRANSFER_REJECT` (Declined by recipient or policy)
@@ -123,4 +128,26 @@ When resuming an interrupted transfer:
    }
    ```
 5. Sender seeks immediately to byte `52428800` and continues streaming without re-sending completed chunks.
+
+---
+
+## 6. Remote P2P & NAT Traversal (STUN & TURN)
+
+### 6.1 STUN NAT Reflexive Candidate Discovery (RFC 5389)
+* **Binding Request**: Sent to configured STUN server (default: `stun.l.google.com:19302`) via UDP.
+* **Header Structure**:
+  * Message Type: `0x0001` (Binding Request), `0x0101` (Binding Success Response)
+  * Magic Cookie: `0x2112A442`
+  * Transaction ID: 12 bytes cryptographically random
+* **XOR-MAPPED-ADDRESS Attribute (`0x0020`)**:
+  * `X-Port`: Port ^ (`0x2112A442 >> 16`)
+  * `X-Address`: IPv4 ^ `0x2112A442` or IPv6 ^ (`0x2112A442` || `Transaction_ID`)
+* Discovered reflexive address forms the `server_reflexive` ICE candidate for direct UDP hole punching.
+
+### 6.2 TURN Relay Fallback (RFC 5766)
+* When direct LAN and STUN reflexive hole punching fail due to symmetric NAT or firewall rules, DROPZONE initiates TURN allocation (`0x0003`).
+* **Cryptographic Blindness**:
+  * All payload data forwarded through TURN relays consists of raw encrypted `DZP1` frames (ChaCha20-Poly1305 with peer session keys).
+  * Relays only see opaque byte envelopes. Zero plaintext file or manifest data is accessible to intermediate relays.
+
 

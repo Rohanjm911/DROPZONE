@@ -19,6 +19,9 @@ public sealed class TransferOrchestrator : IAsyncDisposable
 
     public event Action<TransferJob>? JobUpdated;
     public event Action<TransferManifest>? InboundTransferRequested;
+    public event Action<PairingPinInfo>? PairingPinDisplayRequested;
+    public event Action<PairingResult>? PairingCompleted;
+    public event Action<NatCandidate>? NatCandidateDiscovered;
 
     public TransferOrchestrator(
         IDropZoneEngine engine,
@@ -282,6 +285,40 @@ public sealed class TransferOrchestrator : IAsyncDisposable
                     }
                     break;
 
+                case 51: // DZ_EVENT_PAIRING_PIN_DISPLAY
+                    var pinInfo = JsonSerializer.Deserialize<PairingPinInfo>(e.PayloadJson);
+                    if (pinInfo != null)
+                    {
+                        PairingPinDisplayRequested?.Invoke(pinInfo);
+                    }
+                    break;
+
+                case 52: // DZ_EVENT_PAIRING_COMPLETED
+                    var successResult = JsonSerializer.Deserialize<PairingResult>(e.PayloadJson);
+                    if (successResult != null)
+                    {
+                        // Update device trust level in database
+                        await _deviceRepository.UpdateTrustLevelAsync(successResult.PeerDeviceId, DeviceTrustLevel.Trusted);
+                        PairingCompleted?.Invoke(successResult);
+                    }
+                    break;
+
+                case 53: // DZ_EVENT_PAIRING_FAILED
+                    var failResult = JsonSerializer.Deserialize<PairingResult>(e.PayloadJson);
+                    if (failResult != null)
+                    {
+                        PairingCompleted?.Invoke(failResult);
+                    }
+                    break;
+
+                case 60: // DZ_EVENT_NAT_CANDIDATE_DISCOVERED
+                    var natCandidate = JsonSerializer.Deserialize<NatCandidate>(e.PayloadJson);
+                    if (natCandidate != null)
+                    {
+                        NatCandidateDiscovered?.Invoke(natCandidate);
+                    }
+                    break;
+
                 case 99: // DZ_EVENT_ERROR
                     var errJobId = Guid.Parse(root.GetProperty("job_id").GetString()!);
                     var errMsg = root.GetProperty("message").GetString() ?? "Unknown error";
@@ -314,6 +351,9 @@ public sealed class TransferOrchestrator : IAsyncDisposable
         await _repository.AddJobAsync(job);
         JobUpdated?.Invoke(job);
 
+        // Security check: Verify if any files in manifest are suspicious or disguised
+        var hasSuspiciousFiles = manifest.Files.Any(f => _security.AnalyzeFile(f.RelativePath).IsSuspicious);
+
         // Check Device Trust Level
         var peer = await _deviceRepository.GetDeviceAsync(manifest.SenderDeviceId);
         if (peer != null && peer.TrustLevel == DeviceTrustLevel.Blocked)
@@ -322,15 +362,36 @@ public sealed class TransferOrchestrator : IAsyncDisposable
             return;
         }
 
-        if (peer != null && peer.TrustLevel == DeviceTrustLevel.Trusted)
+        // Only auto-accept trusted devices if NO files are suspicious!
+        if (peer != null && peer.TrustLevel == DeviceTrustLevel.Trusted && !hasSuspiciousFiles)
         {
             // Auto-accept trusted devices
             await AcceptInboundTransferAsync(job.Id);
             return;
         }
 
-        // Prompt user
+        // Prompt user (including suspicious file warning if present)
         InboundTransferRequested?.Invoke(manifest);
+    }
+
+    public Task StartPairingAsync(string peerIp, ushort peerPort, CancellationToken ct = default)
+    {
+        return _engine.StartPairingAsync(peerIp, peerPort, ct);
+    }
+
+    public Task<bool> ConfirmPairingAsync(string peerDeviceId, string pinCode, bool isAccepted, CancellationToken ct = default)
+    {
+        return _engine.ConfirmPairingAsync(peerDeviceId, pinCode, isAccepted, ct);
+    }
+
+    public Task<NatCandidate?> TestStunAsync(string stunServer = "stun.l.google.com:19302", CancellationToken ct = default)
+    {
+        return _engine.TestStunAsync(stunServer, ct);
+    }
+
+    public Task GatherNatCandidatesAsync(string stunServer = "stun.l.google.com:19302", CancellationToken ct = default)
+    {
+        return _engine.GatherNatCandidatesAsync(stunServer, ct);
     }
 
     private async Task HandleTransferFailureAsync(Guid jobId, string message)

@@ -98,6 +98,7 @@ public partial class App : Avalonia.Application
             sp.GetRequiredService<IDeviceRepository>(),
             sp.GetRequiredService<ITransferRepository>(),
             sp.GetRequiredService<IFileSystemStorage>(),
+            sp.GetRequiredService<ISecurityService>(),
             downloadDir
         ));
     }

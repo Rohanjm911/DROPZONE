@@ -113,6 +113,16 @@ public sealed class SqliteDeviceRepository : IDeviceRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
+    public Task RevokeDeviceAsync(string deviceId, CancellationToken ct = default)
+    {
+        return UpdateTrustLevelAsync(deviceId, DeviceTrustLevel.Prompt, ct);
+    }
+
+    public Task BlockDeviceAsync(string deviceId, CancellationToken ct = default)
+    {
+        return UpdateTrustLevelAsync(deviceId, DeviceTrustLevel.Blocked, ct);
+    }
+
     private static Device MapReaderToDevice(SqliteDataReader reader)
     {
         return new Device

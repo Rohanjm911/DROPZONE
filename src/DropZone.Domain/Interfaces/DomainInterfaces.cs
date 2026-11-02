@@ -30,6 +30,11 @@ public interface IDropZoneEngine : IAsyncDisposable
     Task PauseJobAsync(Guid jobId, CancellationToken ct = default);
     Task ResumeJobAsync(Guid jobId, CancellationToken ct = default);
     Task CancelJobAsync(Guid jobId, CancellationToken ct = default);
+    Task<IdentityKeyPair> GenerateIdentityKeyAsync(CancellationToken ct = default);
+    Task StartPairingAsync(string peerIp, ushort peerPort, CancellationToken ct = default);
+    Task<bool> ConfirmPairingAsync(string peerDeviceId, string pinCode, bool isAccepted, CancellationToken ct = default);
+    Task<NatCandidate?> TestStunAsync(string stunServer, CancellationToken ct = default);
+    Task GatherNatCandidatesAsync(string stunServer, CancellationToken ct = default);
 
     event EventHandler<EngineEvent>? EventReceived;
 }
@@ -52,6 +57,8 @@ public interface IDeviceRepository
     Task<Device?> GetDeviceAsync(string deviceId, CancellationToken ct = default);
     Task<IReadOnlyList<Device>> GetAllDevicesAsync(CancellationToken ct = default);
     Task UpdateTrustLevelAsync(string deviceId, Enums.DeviceTrustLevel trustLevel, CancellationToken ct = default);
+    Task RevokeDeviceAsync(string deviceId, CancellationToken ct = default);
+    Task BlockDeviceAsync(string deviceId, CancellationToken ct = default);
 }
 
 public interface IFileSystemStorage
@@ -68,7 +75,12 @@ public interface ISecurityService
 {
     bool IsPathSafe(string relativePath, out string sanitizedPath);
     bool IsSuspiciousFileType(string filename);
+    SuspiciousFileAnalysis AnalyzeFile(string fileName, long fileSize = 0);
     string ComputeSha256(byte[] data);
     Task<string> ComputeFileSha256Async(string filePath, CancellationToken ct = default);
+    Task<QuarantinedFileRecord> QuarantineFileAsync(string sourceFilePath, string relativePath, string reason, string sourceDeviceId, CancellationToken ct = default);
+    Task<bool> RestoreQuarantinedFileAsync(Guid quarantineId, string destinationPath, CancellationToken ct = default);
+    Task<IReadOnlyList<QuarantinedFileRecord>> GetQuarantinedFilesAsync(CancellationToken ct = default);
+    Task<bool> DeleteQuarantinedFileAsync(Guid quarantineId, CancellationToken ct = default);
 }
 

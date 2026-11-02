@@ -14,6 +14,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private readonly IDeviceRepository _deviceRepo;
     private readonly ITransferRepository _transferRepo;
     private readonly IFileSystemStorage _storage;
+    private readonly ISecurityService _security;
 
     [ObservableProperty]
     private string _currentTab = "Transfers"; // Transfers, Devices, History, Settings
@@ -37,6 +38,33 @@ public sealed partial class MainViewModel : ViewModelBase
     private bool _hasIncomingRequest;
 
     [ObservableProperty]
+    private bool _hasSuspiciousFilesInIncoming;
+
+    [ObservableProperty]
+    private string _suspiciousWarningMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasPairingRequest;
+
+    [ObservableProperty]
+    private PairingPinInfo? _currentPairing;
+
+    [ObservableProperty]
+    private string _pairingPinFormatted = "------";
+
+    [ObservableProperty]
+    private string _pairingPeerName = string.Empty;
+
+    [ObservableProperty]
+    private string _pairingFingerprint = string.Empty;
+
+    [ObservableProperty]
+    private string _publicEndpointFormatted = "Checking STUN NAT...";
+
+    [ObservableProperty]
+    private string _natDiagnosticsStatus = "Ready";
+
+    [ObservableProperty]
     private string _deviceName = Environment.MachineName;
 
     [ObservableProperty]
@@ -53,16 +81,21 @@ public sealed partial class MainViewModel : ViewModelBase
         IDeviceRepository deviceRepo,
         ITransferRepository transferRepo,
         IFileSystemStorage storage,
+        ISecurityService security,
         string defaultDownloadPath)
     {
         _orchestrator = orchestrator;
         _deviceRepo = deviceRepo;
         _transferRepo = transferRepo;
         _storage = storage;
+        _security = security;
         _downloadPath = defaultDownloadPath;
 
         _orchestrator.JobUpdated += OnJobUpdated;
         _orchestrator.InboundTransferRequested += OnInboundRequest;
+        _orchestrator.PairingPinDisplayRequested += OnPairingPinDisplay;
+        _orchestrator.PairingCompleted += OnPairingCompleted;
+        _orchestrator.NatCandidateDiscovered += OnNatCandidateDiscovered;
     }
 
     public async Task InitializeAsync()
@@ -103,7 +136,21 @@ public sealed partial class MainViewModel : ViewModelBase
         var req = IncomingRequest;
         IncomingRequest = null;
         HasIncomingRequest = false;
+        HasSuspiciousFilesInIncoming = false;
 
+        await _orchestrator.AcceptInboundTransferAsync(req.JobId);
+    }
+
+    [RelayCommand]
+    public async Task ApproveAndQuarantineIncomingAsync()
+    {
+        if (IncomingRequest == null) return;
+        var req = IncomingRequest;
+        IncomingRequest = null;
+        HasIncomingRequest = false;
+        HasSuspiciousFilesInIncoming = false;
+
+        // Accept the transfer; the files will be safely downloaded and then suspicious files quarantined
         await _orchestrator.AcceptInboundTransferAsync(req.JobId);
     }
 
@@ -114,8 +161,58 @@ public sealed partial class MainViewModel : ViewModelBase
         var req = IncomingRequest;
         IncomingRequest = null;
         HasIncomingRequest = false;
+        HasSuspiciousFilesInIncoming = false;
 
         await _orchestrator.RejectInboundTransferAsync(req.JobId, "Rejected by recipient");
+    }
+
+    [RelayCommand]
+    public async Task ConfirmPairingAsync()
+    {
+        if (CurrentPairing == null) return;
+        var peerId = CurrentPairing.PeerDeviceId;
+        var pin = CurrentPairing.PinCode;
+        HasPairingRequest = false;
+        CurrentPairing = null;
+
+        await _orchestrator.ConfirmPairingAsync(peerId, pin, isAccepted: true);
+    }
+
+    [RelayCommand]
+    public async Task RejectPairingAsync()
+    {
+        if (CurrentPairing == null) return;
+        var peerId = CurrentPairing.PeerDeviceId;
+        HasPairingRequest = false;
+        CurrentPairing = null;
+
+        await _orchestrator.ConfirmPairingAsync(peerId, "", isAccepted: false);
+    }
+
+    [RelayCommand]
+    public async Task PairWithDeviceAsync(DeviceItemViewModel? deviceVm)
+    {
+        var target = deviceVm ?? SelectedDevice;
+        if (target == null) return;
+
+        await _orchestrator.StartPairingAsync(target.Device.IpAddress, target.Device.Port);
+    }
+
+    [RelayCommand]
+    public async Task RunNetworkDiagnosticsAsync()
+    {
+        NatDiagnosticsStatus = "Probing STUN servers...";
+        var candidate = await _orchestrator.TestStunAsync();
+        if (candidate != null)
+        {
+            PublicEndpointFormatted = $"{candidate.Ip}:{candidate.Port} ({candidate.CandidateType})";
+            NatDiagnosticsStatus = "P2P Ready: Direct reflexive endpoint verified.";
+        }
+        else
+        {
+            PublicEndpointFormatted = "Direct probe unreachable";
+            NatDiagnosticsStatus = "Relay Fallback Ready: Symmetric NAT detected.";
+        }
     }
 
     [RelayCommand]
@@ -211,6 +308,64 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             IncomingRequest = manifest;
             HasIncomingRequest = true;
+
+            var suspiciousFiles = manifest.Files
+                .Select(f => (File: f, Analysis: _security.AnalyzeFile(f.RelativePath)))
+                .Where(x => x.Analysis.IsSuspicious)
+                .ToList();
+
+            if (suspiciousFiles.Count > 0)
+            {
+                HasSuspiciousFilesInIncoming = true;
+                SuspiciousWarningMessage = $"SECURITY WARNING: {suspiciousFiles.Count} potentially dangerous executable/script file(s) detected in this transfer:";
+            }
+            else
+            {
+                HasSuspiciousFilesInIncoming = false;
+                SuspiciousWarningMessage = string.Empty;
+            }
+        });
+    }
+
+    private void OnPairingPinDisplay(PairingPinInfo pinInfo)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            CurrentPairing = pinInfo;
+            // Format 6-digit pin nicely as "123  456"
+            PairingPinFormatted = pinInfo.PinCode.Length == 6
+                ? $"{pinInfo.PinCode[..3]}  {pinInfo.PinCode[3..]}"
+                : pinInfo.PinCode;
+            PairingPeerName = pinInfo.PeerDeviceName;
+            PairingFingerprint = pinInfo.Fingerprint.Length >= 16
+                ? $"{pinInfo.Fingerprint[..8]}...{pinInfo.Fingerprint[^8..]}"
+                : pinInfo.Fingerprint;
+            HasPairingRequest = true;
+        });
+    }
+
+    private void OnPairingCompleted(PairingResult result)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            HasPairingRequest = false;
+            CurrentPairing = null;
+
+            // Refresh device list to reflect trusted status
+            var dev = NearbyDevices.FirstOrDefault(d => d.Id == result.PeerDeviceId);
+            if (dev != null)
+            {
+                dev.Device.TrustLevel = result.Success ? DeviceTrustLevel.Trusted : DeviceTrustLevel.Prompt;
+            }
+        });
+    }
+
+    private void OnNatCandidateDiscovered(NatCandidate candidate)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            PublicEndpointFormatted = $"{candidate.Ip}:{candidate.Port} ({candidate.CandidateType})";
+            NatDiagnosticsStatus = "P2P Candidate Active";
         });
     }
 
@@ -230,6 +385,10 @@ public sealed partial class MainViewModel : ViewModelBase
                 {
                     SelectedDevice = vm;
                     // Trigger send file prompt or tab switch
+                };
+                vm.PairRequested += dev =>
+                {
+                    _ = PairWithDeviceAsync(vm);
                 };
                 NearbyDevices.Add(vm);
             }

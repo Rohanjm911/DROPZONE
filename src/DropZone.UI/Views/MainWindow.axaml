@@ -198,6 +198,7 @@
 
                       <!-- Action Buttons -->
                       <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button Content="Pair (SAS)" Command="{Binding PairDeviceCommand}" FontSize="12" Padding="10,6" CornerRadius="4" />
                         <Button Content="Toggle Trust" Command="{Binding ToggleTrustCommand}" FontSize="12" Padding="10,6" CornerRadius="4" />
                         <Button Content="Send Files" Command="{Binding SendFilesCommand}" 
                                 Background="{DynamicResource DzPrimaryBrush}" Foreground="White" FontWeight="SemiBold" FontSize="12" Padding="14,6" CornerRadius="4" />
@@ -264,11 +265,27 @@
               <CheckBox IsChecked="{Binding AutoAcceptTrusted}" Content="Auto-accept incoming transfers from Trusted Devices" FontSize="13" Foreground="{DynamicResource DzTextPrimaryBrush}" />
             </StackPanel>
 
+            <!-- Network Diagnostics Panel -->
+            <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,12,0,0">
+              <StackPanel Spacing="10">
+                <Grid ColumnDefinitions="*, Auto">
+                  <TextBlock Grid.Column="0" Text="P2P &amp; STUN NAT Diagnostics" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource DzTextPrimaryBrush}" VerticalAlignment="Center" />
+                  <Button Grid.Column="1" Content="Probe STUN" Command="{Binding RunNetworkDiagnosticsCommand}" FontSize="11" Padding="10,4" CornerRadius="4" />
+                </Grid>
+                <StackPanel Spacing="3">
+                  <TextBlock Text="Reflexive Public Endpoint:" FontSize="11" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+                  <TextBlock Text="{Binding PublicEndpointFormatted}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource DzPrimaryBrush}" FontFamily="Consolas, monospace" />
+                </StackPanel>
+                <TextBlock Text="{Binding NatDiagnosticsStatus}" FontSize="12" Foreground="{DynamicResource DzTextMutedBrush}" />
+              </StackPanel>
+            </Border>
+
             <!-- Security Guarantees Panel -->
             <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,16,0,0">
               <StackPanel Spacing="8">
                 <TextBlock Text="Active Security Posture" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource DzSuccessBrush}" />
                 <TextBlock Text="• Authenticated End-to-End Encryption: ChaCha20-Poly1305 (AEAD)" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+                <TextBlock Text="• Identity &amp; Pairing: X25519 Ephemeral DH + 6-digit SAS Verification" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
                 <TextBlock Text="• Integrity Verification: Dual-Layer SHA-256 (Chunk &amp; Full File)" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
                 <TextBlock Text="• Directory Traversal Protection: Strict path sanitization enabled" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
                 <TextBlock Text="• Automatic Execution: Never executed, quarantine isolation active" FontSize="12" Foreground="{DynamicResource DzTextSecondaryBrush}" />
@@ -281,10 +298,20 @@
         <Border Background="#CC000000" IsVisible="{Binding HasIncomingRequest}" 
                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
           <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="1" 
-                  CornerRadius="8" Padding="24" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  CornerRadius="8" Padding="24" Width="460" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel Spacing="14">
               <TextBlock Text="Incoming Transfer Request" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
               <TextBlock Text="{Binding IncomingRequest.SenderDeviceName, StringFormat='Device &quot;{0}&quot; wants to send you files.'}" FontSize="13" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+
+              <!-- Suspicious Files Warning Banner -->
+              <Border Background="#3B1212" BorderBrush="{DynamicResource DzDangerBrush}" BorderThickness="1" CornerRadius="6" Padding="12" 
+                      IsVisible="{Binding HasSuspiciousFilesInIncoming}">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="{Binding SuspiciousWarningMessage}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource DzDangerBrush}" TextWrapping="Wrap" />
+                  <TextBlock Text="These files may execute code or contain disguised extensions. DropZone never executes received files automatically." 
+                             FontSize="11" Foreground="{DynamicResource DzTextSecondaryBrush}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
 
               <Border Background="{DynamicResource DzSidebarBgBrush}" CornerRadius="6" Padding="12">
                 <StackPanel Spacing="4">
@@ -300,6 +327,49 @@
                 <Button Grid.Column="1" Content="Approve Transfer" Command="{Binding ApproveIncomingCommand}" 
                         Background="{DynamicResource DzPrimaryBrush}" Foreground="White" FontWeight="SemiBold" 
                         HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="6,0,0,0" Padding="12,8" CornerRadius="6" />
+              </Grid>
+            </StackPanel>
+          </Border>
+        </Border>
+
+        <!-- CRYPTOGRAPHIC PAIRING MODAL OVERLAY -->
+        <Border Background="#DD000000" IsVisible="{Binding HasPairingRequest}"
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+          <Border Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="1" 
+                  CornerRadius="8" Padding="24" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Spacing="16">
+              <!-- Modal Header -->
+              <StackPanel Spacing="4">
+                <TextBlock Text="Device Pairing &amp; Verification" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource DzTextPrimaryBrush}" />
+                <TextBlock Text="{Binding PairingPeerName, StringFormat='Verifying secure identity with &quot;{0}&quot;'}" FontSize="13" Foreground="{DynamicResource DzTextSecondaryBrush}" />
+              </StackPanel>
+
+              <!-- 6-Digit SAS Numeric PIN Code -->
+              <Border Background="{DynamicResource DzBgBrush}" BorderBrush="{DynamicResource DzPrimaryBrush}" BorderThickness="2" CornerRadius="8" Padding="20,16">
+                <StackPanel Spacing="6" HorizontalAlignment="Center">
+                  <TextBlock Text="CONFIRMATION PIN" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource DzTextSecondaryBrush}" HorizontalAlignment="Center" LetterSpacing="1" />
+                  <TextBlock Text="{Binding PairingPinFormatted}" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource DzPrimaryBrush}" HorizontalAlignment="Center" LetterSpacing="4" />
+                  <TextBlock Text="Verify that this exact 6-digit PIN matches on both devices." FontSize="11" Foreground="{DynamicResource DzTextSecondaryBrush}" HorizontalAlignment="Center" />
+                </StackPanel>
+              </Border>
+
+              <!-- Fingerprint details -->
+              <Border Background="{DynamicResource DzSidebarBgBrush}" CornerRadius="6" Padding="10,8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="Fingerprint:" FontSize="11" Foreground="{DynamicResource DzTextMutedBrush}" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding PairingFingerprint}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DzTextPrimaryBrush}" FontFamily="Consolas, monospace" VerticalAlignment="Center" />
+                </StackPanel>
+              </Border>
+
+              <!-- Modal Buttons -->
+              <Grid ColumnDefinitions="*, *" Margin="0,4,0,0">
+                <Button Grid.Column="0" Content="Reject" Command="{Binding RejectPairingCommand}"
+                        Background="{DynamicResource DzSurfaceBrush}" BorderBrush="{DynamicResource DzBorderBrush}" BorderThickness="1"
+                        Foreground="{DynamicResource DzTextPrimaryBrush}" FontWeight="SemiBold"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,6,0" Padding="12,10" CornerRadius="6" />
+                <Button Grid.Column="1" Content="Confirm Match" Command="{Binding ConfirmPairingCommand}"
+                        Background="{DynamicResource DzSuccessBrush}" Foreground="White" FontWeight="SemiBold"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="6,0,0,0" Padding="12,10" CornerRadius="6" />
               </Grid>
             </StackPanel>
           </Border>

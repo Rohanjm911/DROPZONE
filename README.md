@@ -58,23 +58,27 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full structural details.
 
 ## 🗺 Phased Development Roadmap
 
-1. **Phase 1: Core File Transfer** (Current)
-   * Rust Tokio streaming engine (framing, chunking, backpressure).
+1. **Phase 1: Core File Transfer** (Completed ✅)
+   * Rust Tokio streaming engine (binary framing `DZP1`, 64-byte chunk descriptor, backpressure).
    * C# FFI Interop bridge (`DropZoneEngineInterop`).
-   * Domain model, transfer queue, pause/resume/cancel mechanics.
-   * SQLite persistence for jobs and history.
-   * Avalonia MVVM desktop interface with drag-and-drop file/folder sharing.
-2. **Phase 2: Security & Advanced Networking**
-   * ChaCha20-Poly1305 authenticated session channels.
-   * Short Authentication String (SAS), 6-digit PIN, and QR-based device pairing.
-   * STUN-based NAT traversal and TURN zero-knowledge encrypted relay fallback.
-   * Zero-trust quarantine and path-traversal guardrails.
-3. **Phase 3: Analytics & Device Management**
-   * Real-time network telemetry and transfer speed diagnostics.
-   * Device permission management (auto-accept, prompt, blocked).
+   * Domain model, transfer queue, concurrency slots, pause/resume/cancel mechanics.
+   * SQLite persistence (WAL mode) for transfer jobs and history.
+   * Avalonia MVVM desktop interface with drag-and-drop file/folder sharing, dark theme, and solid palette.
+2. **Phase 2: Security & Advanced Networking** (Completed ✅)
+   * Authenticated end-to-end encryption (ChaCha20-Poly1305 with sequence nonces).
+   * Perfect Forward Secrecy: Ephemeral Curve25519 (`X25519`) Diffie-Hellman key agreement + RFC 5869 HKDF-SHA256 session key derivation.
+   * Cryptographic device authentication & pairing via 6-digit Short Authentication String (SAS) numeric PIN matching.
+   * RFC 5389 STUN client for reflexive NAT candidate discovery (`srflx`) and direct P2P hole punching.
+   * RFC 5766 TURN relay client framing with guaranteed zero-knowledge blind encryption.
+   * Heuristic threat analyzer: Right-to-Left Override (RTLO) Unicode spoofing detection, disguised double extension detection.
+   * Isolated Quarantine Vault (`%LOCALAPPDATA%/DropZone/Quarantine/`) with read-only attribution, companion `.meta.json` tracking, safe restoration, and permanent purge.
+   * Device permission management (Trusted, Prompt, Blocked, Revoked) in SQLite.
+3. **Phase 3: Analytics & Device Management** (Next Phase)
+   * Real-time network telemetry, ping, and transfer speed diagnostics charts.
+   * Detailed device permission management and capability flags.
    * Encrypted local backup and export of transfer history.
 4. **Phase 4: Mobile Applications (Android & iOS)**
-   * Avalonia mobile adaptations, scoped storage handling, foreground transfer services.
+   * Avalonia mobile adaptations, scoped storage handling, background transfer services.
 5. **Phase 5: Pro & Enterprise Functionality**
    * Multi-interface aggregation, folder sync, enterprise credential management.
 6. **Phase 6: Quality Assurance & Stable Release**

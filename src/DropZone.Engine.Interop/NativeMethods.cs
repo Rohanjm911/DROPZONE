@@ -44,6 +44,23 @@ internal static class NativeMethods
         return IntPtr.Zero;
     }
 
+    public const int DZ_EVENT_SERVER_STARTED = 1;
+    public const int DZ_EVENT_PEER_DISCOVERED = 2;
+    public const int DZ_EVENT_TRANSFER_REQUEST = 10;
+    public const int DZ_EVENT_TRANSFER_ACCEPTED = 11;
+    public const int DZ_EVENT_TRANSFER_REJECTED = 12;
+    public const int DZ_EVENT_PROGRESS = 20;
+    public const int DZ_EVENT_PAUSED = 30;
+    public const int DZ_EVENT_RESUMED = 31;
+    public const int DZ_EVENT_CANCELLED = 32;
+    public const int DZ_EVENT_COMPLETED = 40;
+    public const int DZ_EVENT_PAIRING_REQUEST = 50;
+    public const int DZ_EVENT_PAIRING_PIN_DISPLAY = 51;
+    public const int DZ_EVENT_PAIRING_COMPLETED = 52;
+    public const int DZ_EVENT_PAIRING_FAILED = 53;
+    public const int DZ_EVENT_NAT_CANDIDATE_DISCOVERED = 60;
+    public const int DZ_EVENT_ERROR = 99;
+
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void EventCallback(int eventType, IntPtr payloadJsonUtf8, IntPtr userData);
 
@@ -87,6 +104,24 @@ internal static class NativeMethods
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "dropzone_engine_cancel_job")]
     public static extern int DropZoneEngineCancelJob([MarshalAs(UnmanagedType.LPUTF8Str)] string jobId);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "dropzone_engine_generate_identity_key")]
+    public static extern int DropZoneEngineGenerateIdentityKey(IntPtr outJson, nuint maxLen);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "dropzone_engine_start_pairing")]
+    public static extern int DropZoneEngineStartPairing([MarshalAs(UnmanagedType.LPUTF8Str)] string peerIp, ushort peerPort);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "dropzone_engine_confirm_pairing")]
+    public static extern int DropZoneEngineConfirmPairing(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string peerDeviceId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string pinCode,
+        [MarshalAs(UnmanagedType.I1)] bool isAccepted);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "dropzone_engine_test_stun")]
+    public static extern int DropZoneEngineTestStun([MarshalAs(UnmanagedType.LPUTF8Str)] string stunServer, IntPtr outJson, nuint maxLen);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "dropzone_engine_gather_nat_candidates")]
+    public static extern int DropZoneEngineGatherNatCandidates([MarshalAs(UnmanagedType.LPUTF8Str)] string stunServer);
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "dropzone_engine_shutdown")]
     public static extern int DropZoneEngineShutdown();

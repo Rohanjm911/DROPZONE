@@ -135,6 +135,75 @@ public sealed class DropZoneEngineInterop : IDropZoneEngine
         return Task.CompletedTask;
     }
 
+    public Task<IdentityKeyPair> GenerateIdentityKeyAsync(CancellationToken ct = default)
+    {
+        EnsureInitialized();
+        var buffer = Marshal.AllocHGlobal(1024);
+        try
+        {
+            var res = NativeMethods.DropZoneEngineGenerateIdentityKey(buffer, 1024);
+            if (res != 0)
+                throw new InvalidOperationException($"Failed to generate identity key (code {res}): {GetLastError()}");
+
+            var json = Marshal.PtrToStringUTF8(buffer) ?? "{}";
+            var keyPair = JsonSerializer.Deserialize<IdentityKeyPair>(json, JsonOptions)
+                ?? throw new InvalidOperationException("Failed to parse identity key JSON");
+            return Task.FromResult(keyPair);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    public Task StartPairingAsync(string peerIp, ushort peerPort, CancellationToken ct = default)
+    {
+        EnsureInitialized();
+        var res = NativeMethods.DropZoneEngineStartPairing(peerIp, peerPort);
+        if (res != 0)
+            throw new InvalidOperationException($"Failed to start pairing (code {res}): {GetLastError()}");
+        return Task.CompletedTask;
+    }
+
+    public Task<bool> ConfirmPairingAsync(string peerDeviceId, string pinCode, bool isAccepted, CancellationToken ct = default)
+    {
+        EnsureInitialized();
+        var res = NativeMethods.DropZoneEngineConfirmPairing(peerDeviceId, pinCode, isAccepted);
+        return Task.FromResult(res == 0);
+    }
+
+    public Task<NatCandidate?> TestStunAsync(string stunServer, CancellationToken ct = default)
+    {
+        EnsureInitialized();
+        var buffer = Marshal.AllocHGlobal(2048);
+        try
+        {
+            var res = NativeMethods.DropZoneEngineTestStun(stunServer, buffer, 2048);
+            if (res != 0)
+                return Task.FromResult<NatCandidate?>(null);
+
+            var json = Marshal.PtrToStringUTF8(buffer);
+            if (string.IsNullOrWhiteSpace(json))
+                return Task.FromResult<NatCandidate?>(null);
+
+            var candidate = JsonSerializer.Deserialize<NatCandidate>(json, JsonOptions);
+            return Task.FromResult(candidate);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    public Task GatherNatCandidatesAsync(string stunServer, CancellationToken ct = default)
+    {
+        EnsureInitialized();
+        var res = NativeMethods.DropZoneEngineGatherNatCandidates(stunServer);
+        if (res != 0)
+            throw new InvalidOperationException($"Failed to gather NAT candidates: {GetLastError()}");
+        return Task.CompletedTask;
+    }
+
     private void EnsureInitialized()
     {
         if (!_initialized)

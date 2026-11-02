@@ -71,5 +71,26 @@ public class EngineInteropTests
         await engine.StopServerAsync();
         await engine.DisposeAsync();
     }
+
+    [Fact]
+    public async Task Engine_GenerateIdentityKey_ReturnsValidCurve25519Key()
+    {
+        var engine = new DropZoneEngineInterop();
+        var config = new EngineConfig
+        {
+            DeviceId = "test-crypto-uuid",
+            DeviceName = "Crypto Node",
+            DownloadDirectory = Path.GetTempPath(),
+            ListenPort = 0
+        };
+        await engine.InitializeAsync(config);
+
+        var keyPair = await engine.GenerateIdentityKeyAsync();
+        Assert.NotNull(keyPair);
+        Assert.Equal(64, keyPair.PublicKeyHex.Length);
+        Assert.Equal(64, keyPair.Fingerprint.Length);
+
+        await engine.DisposeAsync();
+    }
 }
 

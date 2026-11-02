@@ -14,6 +14,7 @@ public sealed partial class DeviceItemViewModel : ViewModelBase
     private Device _device;
 
     public event Action<Device>? SendRequested;
+    public event Action<Device>? PairRequested;
 
     public DeviceItemViewModel(Device device, IDeviceRepository deviceRepo)
     {
@@ -47,6 +48,12 @@ public sealed partial class DeviceItemViewModel : ViewModelBase
     public void SendFiles()
     {
         SendRequested?.Invoke(Device);
+    }
+
+    [RelayCommand]
+    public void PairDevice()
+    {
+        PairRequested?.Invoke(Device);
     }
 
     [RelayCommand]

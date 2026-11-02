@@ -1,4 +1,7 @@
+use crate::crypto::{generate_x25519_keypair, sha256_hex};
 use crate::discovery::DiscoveryManager;
+use crate::nat::StunClient;
+use crate::pairing::{PairingManager, PairingPayload};
 use crate::protocol::{FrameHeader, FrameType};
 use crate::session::SessionManager;
 use crate::transport::{read_frame, write_frame};
@@ -24,6 +27,11 @@ pub const DZ_EVENT_PAUSED: i32 = 30;
 pub const DZ_EVENT_RESUMED: i32 = 31;
 pub const DZ_EVENT_CANCELLED: i32 = 32;
 pub const DZ_EVENT_COMPLETED: i32 = 40;
+pub const DZ_EVENT_PAIRING_REQUEST: i32 = 50;
+pub const DZ_EVENT_PAIRING_PIN_DISPLAY: i32 = 51;
+pub const DZ_EVENT_PAIRING_COMPLETED: i32 = 52;
+pub const DZ_EVENT_PAIRING_FAILED: i32 = 53;
+pub const DZ_EVENT_NAT_CANDIDATE_DISCOVERED: i32 = 60;
 pub const DZ_EVENT_ERROR: i32 = 99;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -41,6 +49,7 @@ struct EngineState {
     callback: Mutex<Option<(EventCallback, *mut c_void)>>,
     discovery: DiscoveryManager,
     sessions: SessionManager,
+    pairing: PairingManager,
     server_running: Arc<AtomicBool>,
 }
 
@@ -112,6 +121,7 @@ pub unsafe extern "C" fn dropzone_engine_init(config_json: *const c_char) -> i32
         callback: Mutex::new(None),
         discovery: DiscoveryManager::new(),
         sessions: SessionManager::new(),
+        pairing: PairingManager::new(),
         server_running: Arc::new(AtomicBool::new(false)),
     };
 
@@ -178,10 +188,43 @@ pub unsafe extern "C" fn dropzone_engine_start_server(bind_ip: *const c_char, po
                 if let Ok((mut socket, _peer_addr)) = listener.accept().await {
                     tokio::spawn(async move {
                         if let Ok((header, payload)) = read_frame(&mut socket).await {
-                            if header.frame_type == FrameType::TransferRequest {
-                                if let Ok(json) = std::str::from_utf8(&payload) {
-                                    dispatch_event(DZ_EVENT_TRANSFER_REQUEST, json);
+                            match header.frame_type {
+                                FrameType::TransferRequest => {
+                                    if let Ok(json) = std::str::from_utf8(&payload) {
+                                        dispatch_event(DZ_EVENT_TRANSFER_REQUEST, json);
+                                    }
                                 }
+                                FrameType::PairingRequest => {
+                                    if let Ok(req_payload) = serde_json::from_slice::<PairingPayload>(&payload) {
+                                        if let Some(engine) = get_state() {
+                                            let (local_id, local_name) = {
+                                                let cfg = engine.config.lock().unwrap();
+                                                let c = cfg.as_ref().unwrap();
+                                                (c.device_id.clone(), c.device_name.clone())
+                                            };
+                                            if let Ok((resp_payload, pin_event)) = engine.pairing.handle_incoming_request(&local_id, &local_name, &req_payload) {
+                                                if let Ok(resp_bytes) = serde_json::to_vec(&resp_payload) {
+                                                    let resp_header = FrameHeader::new(FrameType::PairingResponse, 1, resp_bytes.len() as u32);
+                                                    let _ = write_frame(&mut socket, &resp_header, &resp_bytes).await;
+                                                }
+                                                if let Ok(pin_json) = serde_json::to_string(&pin_event) {
+                                                    dispatch_event(DZ_EVENT_PAIRING_PIN_DISPLAY, &pin_json);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                FrameType::PairingConfirm => {
+                                    if let Ok(json_str) = std::str::from_utf8(&payload) {
+                                        dispatch_event(DZ_EVENT_PAIRING_COMPLETED, json_str);
+                                    }
+                                }
+                                FrameType::PairingReject => {
+                                    if let Ok(json_str) = std::str::from_utf8(&payload) {
+                                        dispatch_event(DZ_EVENT_PAIRING_FAILED, json_str);
+                                    }
+                                }
+                                _ => {}
                             }
                         }
                     });
@@ -401,6 +444,248 @@ pub unsafe extern "C" fn dropzone_engine_cancel_job(job_id: *const c_char) -> i3
             dispatch_event(DZ_EVENT_CANCELLED, &payload);
         }
     }
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dropzone_engine_generate_identity_key(
+    out_json: *mut c_char,
+    max_len: usize,
+) -> i32 {
+    if out_json.is_null() || max_len == 0 {
+        return -1;
+    }
+
+    let (_secret, public) = generate_x25519_keypair();
+    let fp = sha256_hex(public.as_bytes());
+    let pub_hex: String = public
+        .as_bytes()
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect();
+
+    let json = serde_json::json!({
+        "public_key": pub_hex,
+        "fingerprint": fp
+    })
+    .to_string();
+
+    let c_str = match CString::new(json) {
+        Ok(s) => s,
+        Err(_) => return -2,
+    };
+
+    let bytes = c_str.as_bytes_with_nul();
+    if bytes.len() > max_len {
+        return -3;
+    }
+
+    std::ptr::copy_nonoverlapping(bytes.as_ptr() as *const c_char, out_json, bytes.len());
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dropzone_engine_start_pairing(
+    peer_ip: *const c_char,
+    peer_port: u16,
+) -> i32 {
+    if peer_ip.is_null() {
+        return -1;
+    }
+
+    let ip_str = match CStr::from_ptr(peer_ip).to_str() {
+        Ok(s) => s.to_string(),
+        Err(_) => return -2,
+    };
+
+    let state = match get_state() {
+        Some(s) => s,
+        None => return -3,
+    };
+
+    let (local_id, local_name) = {
+        let cfg = state.config.lock().unwrap();
+        let c = cfg.as_ref().unwrap();
+        (c.device_id.clone(), c.device_name.clone())
+    };
+
+    let (req_payload, secret, local_salt) =
+        state.pairing.create_pairing_request(&local_id, &local_name, "peer");
+
+    let addr = format!("{}:{}", ip_str, peer_port);
+
+    state.runtime.spawn(async move {
+        match TcpStream::connect(&addr).await {
+            Ok(mut stream) => {
+                if let Ok(req_bytes) = serde_json::to_vec(&req_payload) {
+                    let header = FrameHeader::new(FrameType::PairingRequest, 1, req_bytes.len() as u32);
+                    if write_frame(&mut stream, &header, &req_bytes).await.is_ok() {
+                        if let Ok((resp_header, resp_payload_bytes)) = read_frame(&mut stream).await {
+                            if resp_header.frame_type == FrameType::PairingResponse {
+                                if let Ok(resp_payload) = serde_json::from_slice::<PairingPayload>(&resp_payload_bytes) {
+                                    if let Some(engine) = get_state() {
+                                        if let Ok(pin_event) = engine.pairing.handle_incoming_response(&resp_payload, secret, local_salt) {
+                                            if let Ok(pin_json) = serde_json::to_string(&pin_event) {
+                                                dispatch_event(DZ_EVENT_PAIRING_PIN_DISPLAY, &pin_json);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                let err_json = serde_json::json!({
+                    "peer_device_id": "",
+                    "peer_device_name": "",
+                    "fingerprint": "",
+                    "success": false,
+                    "message": format!("Pairing connection to {} failed: {}", addr, e)
+                })
+                .to_string();
+                dispatch_event(DZ_EVENT_PAIRING_FAILED, &err_json);
+            }
+        }
+    });
+
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dropzone_engine_confirm_pairing(
+    peer_device_id: *const c_char,
+    pin_code: *const c_char,
+    is_accepted: bool,
+) -> i32 {
+    if peer_device_id.is_null() {
+        return -1;
+    }
+
+    let dev_id = match CStr::from_ptr(peer_device_id).to_str() {
+        Ok(s) => s.to_string(),
+        Err(_) => return -2,
+    };
+
+    let state = match get_state() {
+        Some(s) => s,
+        None => return -3,
+    };
+
+    if !is_accepted {
+        state.pairing.cancel_pairing(&dev_id);
+        let fail_json = serde_json::json!({
+            "peer_device_id": dev_id,
+            "peer_device_name": "",
+            "fingerprint": "",
+            "success": false,
+            "message": "User declined pairing"
+        })
+        .to_string();
+        dispatch_event(DZ_EVENT_PAIRING_FAILED, &fail_json);
+        return 0;
+    }
+
+    let pin = if pin_code.is_null() {
+        ""
+    } else {
+        CStr::from_ptr(pin_code).to_str().unwrap_or("")
+    };
+
+    match state.pairing.confirm_pairing(&dev_id, pin) {
+        Ok(res_event) => {
+            if let Ok(json) = serde_json::to_string(&res_event) {
+                dispatch_event(DZ_EVENT_PAIRING_COMPLETED, &json);
+            }
+            0
+        }
+        Err(e) => {
+            let fail_json = serde_json::json!({
+                "peer_device_id": dev_id,
+                "peer_device_name": "",
+                "fingerprint": "",
+                "success": false,
+                "message": e
+            })
+            .to_string();
+            dispatch_event(DZ_EVENT_PAIRING_FAILED, &fail_json);
+            -4
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dropzone_engine_test_stun(
+    stun_server: *const c_char,
+    out_json: *mut c_char,
+    max_len: usize,
+) -> i32 {
+    if stun_server.is_null() || out_json.is_null() || max_len == 0 {
+        return -1;
+    }
+
+    let server_str = match CStr::from_ptr(stun_server).to_str() {
+        Ok(s) => s.to_string(),
+        Err(_) => return -2,
+    };
+
+    let state = match get_state() {
+        Some(s) => s,
+        None => return -3,
+    };
+
+    let res = state.runtime.block_on(async {
+        StunClient::query_server(&server_str).await
+    });
+
+    match res {
+        Ok(candidate) => {
+            if let Ok(json) = serde_json::to_string(&candidate) {
+                if let Ok(c_str) = CString::new(json) {
+                    let bytes = c_str.as_bytes_with_nul();
+                    if bytes.len() <= max_len {
+                        std::ptr::copy_nonoverlapping(bytes.as_ptr() as *const c_char, out_json, bytes.len());
+                        return 0;
+                    }
+                }
+            }
+            -4
+        }
+        Err(e) => {
+            set_last_error(&e);
+            -5
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dropzone_engine_gather_nat_candidates(
+    stun_server: *const c_char,
+) -> i32 {
+    let server_str = if stun_server.is_null() {
+        "stun.l.google.com:19302".to_string()
+    } else {
+        CStr::from_ptr(stun_server)
+            .to_str()
+            .unwrap_or("stun.l.google.com:19302")
+            .to_string()
+    };
+
+    let state = match get_state() {
+        Some(s) => s,
+        None => return -1,
+    };
+
+    state.runtime.spawn(async move {
+        // Query STUN server
+        if let Ok(candidate) = StunClient::query_server(&server_str).await {
+            if let Ok(json) = serde_json::to_string(&candidate) {
+                dispatch_event(DZ_EVENT_NAT_CANDIDATE_DISCOVERED, &json);
+            }
+        }
+    });
+
     0
 }
 

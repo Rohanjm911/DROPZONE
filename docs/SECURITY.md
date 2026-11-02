@@ -14,16 +14,25 @@ DROPZONE adheres to the principle of **Defense-in-Depth** and **Zero-Trust Netwo
 ## 2. Cryptographic Architecture
 
 ### 2.1 Authenticated End-to-End Encryption (AEAD)
-* **Cipher**: `ChaCha20-Poly1305` (RFC 8439) with fallback or hardware acceleration option for `AES-256-GCM`.
-* **Key Derivation**: Ephemeral ECDH over Curve25519 (`X25519`) combined with static device identity keys (`Ed25519`) using HKDF-SHA256.
-* **Replay Protection**: Monotonically increasing 64-bit chunk sequence numbers included in the AEAD Additional Authenticated Data (AAD).
+* **Cipher**: `ChaCha20-Poly1305` (RFC 8439).
+* **Key Agreement**: Diffie-Hellman over Curve25519 (`X25519`, RFC 7748).
+* **Key Derivation (RFC 5869 HKDF-SHA256)**:
+  * `PRK = HKDF-Extract(salt = sender_salt ^ receiver_salt, IKM = X25519_Shared_Secret)`
+  * `OKM = HKDF-Expand(PRK, info = "dropzone-v1-aead-session-keys", L = 64 bytes)`
+  * Provides 32 bytes forward encryption key + 32 bytes reverse encryption key for bidirectional channel isolation.
+* **Short Authentication String (SAS 6-Digit PIN)**:
+  * `SAS_Bytes = HKDF-Expand(PRK, info = "dropzone-v1-sas-code", L = 4 bytes)`
+  * `PIN = (u32_be(SAS_Bytes) % 900,000) + 100,000` (Guarantees uniform 6-digit confirmation PIN: `100000` - `999999`).
+* **Replay Protection**: Monotonically increasing 64-bit sequence numbers packed into the 96-bit nonce (`nonce[4..12] = seq.to_be_bytes()`).
 
 ### 2.2 Device Authentication & Pairing
-* **Identity Keys**: Each DROPZONE instance generates a persistent Ed25519 keypair on first run, stored in platform-secure storage (Windows DPAPI / macOS Keychain / Linux SecretService).
-* **Pairing Modes**:
-  1. **Short Authentication String (SAS)**: Visual comparison of 4 dictionary words derived from session hash.
-  2. **6-Digit PIN**: Dynamic single-use numeric code exchanged out-of-band.
-  3. **QR Code**: Target device displays QR containing `{ device_id, public_key, session_token, ip, port }`. Initiator scans QR to authenticate.
+* **Identity Keys**: Each DROPZONE instance generates a persistent X25519 keypair on first run.
+* **Pairing Flow**:
+  1. Initiator generates ephemeral X25519 keypair and 32-byte cryptographically secure random salt, transmitting `PairingRequest` frame.
+  2. Responder generates ephemeral keypair and salt, computes shared secret and derives the 6-digit SAS PIN code, transmitting `PairingResponse`.
+  3. Both endpoints display the exact matching 6-digit PIN and SHA-256 fingerprint for out-of-band visual comparison.
+  4. On mutual confirmation, the peer's public key and fingerprint are stored as `Trusted` in the SQLite database. Future transfers between paired devices bypass manual PIN entry while generating unique ephemeral session keys for Perfect Forward Secrecy (PFS).
+  5. Users can revoke device trust at any time, instantly invalidating future transfer requests.
 
 ---
 
@@ -41,10 +50,16 @@ DROPZONE adheres to the principle of **Defense-in-Depth** and **Zero-Trust Netwo
   * Filenames with control characters, null bytes, or reserved OS names (`CON`, `PRN`, `AUX`, `NUL`) are renamed or blocked.
 
 ### 3.3 Quarantine & Suspicious File Handling
-* **Temporary Files**: Incoming transfers are written to `<filename>.<job_id>.dropzone_part`.
-* **Executable Safety**: Executable files (`.exe`, `.bat`, `.cmd`, `.sh`, `.vbs`, `.ps1`, `.apk`, `.deb`) trigger explicit user confirmation before opening.
-* **Windows Mark of the Web**: On Windows, incoming files receive the `Zone.Identifier` ADS (ZoneId=3, Internet) to ensure OS-level protection dialogs apply.
-* **Malware Scanning Hook**: Pluggable integration point for Windows Defender (AMSI), ClamAV on Linux, or platform scanners before files are released from quarantine.
+* **Heuristic Threat Detection**:
+  * **Unicode Override Spoofing**: Rejection of Right-to-Left Override characters (`\u202E`, `\u202D`, `\u202B`) used to reverse displayed filenames (e.g., `document[U+202E]exe.pdf`).
+  * **Disguised Double Extensions**: Detection of innocent extensions immediately followed by executable extensions (e.g. `report.pdf.exe`, `photo.png.scr`).
+  * **Executable Extensions**: Flagging of high-risk binaries and script formats (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.msi`, `.scr`, `.sh`, `.apk`, `.com`, `.pif`, `.hta`, `.cpl`, `.jar`, `.reg`).
+* **Quarantine Vault**:
+  * Suspicious files are segregated into `%LOCALAPPDATA%/DropZone/Quarantine/`.
+  * Files are renamed to `<guid>.quarantine` and assigned `ReadOnly` attributes to block direct execution.
+  * Companion `<guid>.meta.json` files record original relative path, source device ID, SHA-256 fingerprint, quarantine timestamp, and specific threat reason.
+  * Users can inspect, permanently delete, or override and restore quarantined files from the UI.
+* **Temporary Files**: Inbound chunks stream into `<filename>.<job_id>.dropzone_part` before atomic promotion upon SHA-256 validation.
 
 ---
 
