@@ -1,7 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using DropZone.UI.ViewModels;
 
 namespace DropZone.UI.Views;
@@ -42,30 +40,4 @@ public partial class MainWindow : Window
             }
         }
     }
-
-    private async void OnBrowseFilesClick(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not MainViewModel vm) return;
-
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Select files to share with DropZone",
-            AllowMultiple = true
-        });
-
-        if (files.Count > 0)
-        {
-            var paths = files.Select(f => f.Path.LocalPath).ToList();
-            await vm.HandleDroppedFilesAsync(paths);
-        }
-    }
-
-    private async void OnExportBackupClick(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not MainViewModel vm) return;
-        var box = this.FindControl<TextBox>("BackupPassphraseBox");
-        var passphrase = box?.Text ?? string.Empty;
-        await vm.ExportEncryptedBackupAsync(passphrase);
-    }
 }
-

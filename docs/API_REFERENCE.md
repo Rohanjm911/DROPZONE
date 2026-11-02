@@ -141,3 +141,35 @@ public interface IDropZoneEngine : IAsyncDisposable
 }
 ```
 
+---
+
+## 4. Platform Abstraction Layer (`IPlatformServices`)
+
+Defined in `DropZone.Domain.Interfaces`:
+
+### `IPlatformService`
+* `PlatformType Platform { get; }`: Returns current operating system (`Windows`, `Linux`, `MacOS`, `Android`, `IOS`).
+* `bool IsMobile { get; }`: `true` on Android and iOS; `false` on Desktop platforms.
+* `string DeviceModel { get; }`: Manufacturer and hardware model description.
+* `string OperatingSystemVersion { get; }`: OS release and build string.
+* `string GetStorageDirectory(StorageDirectoryType directoryType)`: Resolves platform-appropriate paths for `Downloads`, `AppData`, `Cache`, `Quarantine`, and `Temporary`.
+* `Task<bool> CheckPermissionAsync(PlatformPermission permission, CancellationToken ct = default)`: Verifies platform runtime permissions.
+* `Task<bool> RequestPermissionAsync(PlatformPermission permission, CancellationToken ct = default)`: Triggers platform permission prompt dialogs.
+
+### `IPlatformWakeLockService`
+* `Task<bool> AcquireWakeLockAsync(string lockId, string reason, CancellationToken ct = default)`: Prevents CPU sleep / Doze mode / screen auto-lock during active multi-gigabyte transfers.
+* `Task<bool> ReleaseWakeLockAsync(string lockId, CancellationToken ct = default)`: Releases system execution lock when transfer completes or terminates.
+* `bool IsLockActive(string lockId)`: Queries whether a specific lock is currently held.
+
+### `IPlatformNotificationService`
+* `Task ShowTransferProgressNotificationAsync(...)`: Displays persistent, ongoing foreground transfer notification with percentage, throughput, and estimated time remaining.
+* `Task ShowTransferCompletedNotificationAsync(...)`: Posts completion notification toast or push alert with transfer status and byte size.
+* `Task ShowSecurityAlertNotificationAsync(...)`: Posts high-importance security alerts when malware or suspicious disguised files are detected.
+* `Task CancelNotificationAsync(string jobId, CancellationToken ct = default)`: Dismisses notification upon transfer termination.
+
+### `IPlatformStoragePicker`
+* `Task<IReadOnlyList<string>> PickFilesAsync(string title, bool allowMultiple = true, CancellationToken ct = default)`: Opens native desktop file dialog, Android Storage Access Framework (SAF), or iOS Document Picker.
+* `Task<string?> PickFolderAsync(string title, CancellationToken ct = default)`: Opens directory selector.
+* `Task<string?> PickSaveFileAsync(string title, string defaultFileName, string? extension = null, CancellationToken ct = default)`: Opens native save-file destination prompt.
+
+

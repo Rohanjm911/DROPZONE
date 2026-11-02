@@ -51,7 +51,18 @@ $env:DOTNET_CLI_TELEMETRY_OPTOUT="1"; $env:MSBUILDUSESERVER="0"; dotnet test tes
 * `protocol::tests::test_header_serialization` – 16-byte `DZP1` fixed header serialization/deserialization.
 * `protocol::tests::test_chunk_descriptor_serialization` – 64-byte chunk descriptor framing.
 
-### .NET Tests (41 Tests – All Passing)
+### .NET Tests (51 Tests – All Passing)
+* **Mobile Platforms (Android & iOS)**:
+  * `AndroidPlatformService`: Target identification (`PlatformType.Android`), mobile flag assertion, scoped storage directory layout (`Downloads`, `AppData`, `Cache`, `Quarantine`).
+  * `AndroidWakeLockService`: CPU wake lock lifecycle management (`PARTIAL_WAKE_LOCK`), Wi-Fi multicast lock acquisition for mDNS broadcast discovery.
+  * `AndroidNotificationService`: Foreground transfer progress notification, silent channel formatting (`Low`), transfer completion alerts, and security alert dispatch.
+  * `AndroidForegroundTransferService`: Background foreground service orchestration, reference-counted concurrent transfers, and automatic sleep lock release.
+  * `IOSPlatformService`: Target identification (`PlatformType.IOS`), sandboxed application documents path routing, device model and OS metadata.
+  * `IOSWakeLockService`: Idle timer disable/restore toggling (`UIApplication.IdleTimerDisabled`) for uninterrupted file transfers.
+  * `IOSNotificationService`: Notification dispatching, badge count synchronization, and completion handling.
+  * `DropZoneBackgroundTransferManager`: Background processing task scheduler (`BGProcessingTask`) lifecycle coordination.
+  * `DesktopPlatformServices`: Desktop platform identification, Windows thread execution state (`SetThreadExecutionState`), notifications, and lifecycle state management.
+  * `TransferOrchestratorMobilePlatformIntegration`: Orchestrator coordination with wake lock service, background task registration, and notification updates throughout outbound and inbound transfer lifecycles.
 * **Domain & Queue**:
   * Manifest generation, FileItem model integrity, Job model state transitions.
   * TransferQueue slot concurrency limit enforcement, FIFO priority order, item lookup.

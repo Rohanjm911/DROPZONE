@@ -19,7 +19,18 @@ internal static class NativeMethods
 
         var osName = OperatingSystem.IsWindows() ? "dropzone_engine.dll"
             : OperatingSystem.IsMacOS() ? "libdropzone_engine.dylib"
+            : OperatingSystem.IsAndroid() ? "libdropzone_engine.so"
+            : OperatingSystem.IsIOS() ? "libdropzone_engine.dylib"
             : "libdropzone_engine.so";
+
+        // Try system / container linker first on mobile platforms
+        if (OperatingSystem.IsAndroid() || OperatingSystem.IsIOS())
+        {
+            if (NativeLibrary.TryLoad(LibName, assembly, searchPath, out var sysHandle))
+                return sysHandle;
+            if (NativeLibrary.TryLoad(osName, assembly, searchPath, out var sysNamedHandle))
+                return sysNamedHandle;
+        }
 
         // Try local app directory
         var baseDir = AppContext.BaseDirectory;
@@ -29,6 +40,8 @@ internal static class NativeMethods
             Path.Combine(baseDir, "..", "..", "..", "..", "..", "engine", "target", "release", osName),
             Path.Combine(baseDir, "..", "..", "..", "..", "..", "engine", "target", "debug", osName),
             Path.Combine(baseDir, "runtimes", "win-x64", "native", osName),
+            Path.Combine(baseDir, "runtimes", "android-arm64", "native", osName),
+            Path.Combine(baseDir, "runtimes", "ios-arm64", "native", osName),
             osName
         };
 

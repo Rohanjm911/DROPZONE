@@ -16,6 +16,11 @@ public sealed partial class MainViewModel : ViewModelBase
     private readonly IFileSystemStorage _storage;
     private readonly ISecurityService _security;
     private readonly IBackupService _backupService;
+    private readonly IPlatformService? _platformService;
+    private readonly IPlatformStoragePicker? _storagePicker;
+
+    public bool IsMobile => _platformService?.IsMobile ?? false;
+    public string PlatformName => _platformService?.Platform.ToString() ?? "Desktop";
 
     [ObservableProperty]
     private string _currentTab = "Transfers"; // Transfers, Devices, History, Diagnostics, Settings
@@ -96,7 +101,9 @@ public sealed partial class MainViewModel : ViewModelBase
         IFileSystemStorage storage,
         ISecurityService security,
         IBackupService backupService,
-        string defaultDownloadPath)
+        string defaultDownloadPath,
+        IPlatformService? platformService = null,
+        IPlatformStoragePicker? storagePicker = null)
     {
         _orchestrator = orchestrator;
         _deviceRepo = deviceRepo;
@@ -105,6 +112,8 @@ public sealed partial class MainViewModel : ViewModelBase
         _security = security;
         _backupService = backupService;
         _downloadPath = defaultDownloadPath;
+        _platformService = platformService;
+        _storagePicker = storagePicker;
 
         _orchestrator.JobUpdated += OnJobUpdated;
         _orchestrator.InboundTransferRequested += OnInboundRequest;
@@ -228,6 +237,19 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             PublicEndpointFormatted = "Direct probe unreachable";
             NatDiagnosticsStatus = "Relay Fallback Ready: Symmetric NAT detected.";
+        }
+    }
+
+    [RelayCommand]
+    public async Task PickAndSendFilesAsync()
+    {
+        if (_storagePicker == null)
+            return;
+
+        var files = await _storagePicker.PickFilesAsync("Select files to share with DropZone", allowMultiple: true);
+        if (files.Count > 0)
+        {
+            await HandleDroppedFilesAsync(files);
         }
     }
 

@@ -5,4 +5,6 @@
   <Project Path="DropZone.Engine.Interop/DropZone.Engine.Interop.csproj" />
   <Project Path="DropZone.Infrastructure/DropZone.Infrastructure.csproj" />
   <Project Path="DropZone.UI/DropZone.UI.csproj" />
+  <Project Path="DropZone.Android/DropZone.Android.csproj" />
+  <Project Path="DropZone.iOS/DropZone.iOS.csproj" />
 </Solution>

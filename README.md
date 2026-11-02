@@ -79,9 +79,25 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full structural details.
    * Granular device permissions (`DevicePermissions`: auto-accept byte thresholds, custom folder scoping, forced PIN verification, instant revocation).
    * Encrypted local backup vault (`.dzbackup` envelope with PBKDF2 100,000 iterations + AES-256-GCM AEAD).
    * Dedicated Avalonia UI Diagnostics & Telemetry view with live connection metrics and encrypted export/import.
-4. **Phase 4: Mobile Applications (Android & iOS)** (Next Phase)
-   * Avalonia mobile adaptations, scoped storage handling, background transfer services.
-5. **Phase 5: Pro & Enterprise Functionality**
+4. **Phase 4: Mobile Applications (Android & iOS)** (Completed ✅)
+   * Platform abstraction layer (`IPlatformService`, `IPlatformWakeLockService`, `IPlatformNotificationService`, `IPlatformLifecycleService`, `IPlatformStoragePicker`).
+   * Android application (`DropZone.Android`):
+     * Foreground service (`DropZoneTransferForegroundService`) with `FOREGROUND_SERVICE_TYPE_DATA_SYNC` to prevent Doze mode teardown.
+     * `PowerManager.WakeLock` (`PARTIAL_WAKE_LOCK`) and `WifiManager.MulticastLock` bypass for uninterrupted mDNS discovery.
+     * Scoped storage and Storage Access Framework (SAF) integration.
+     * Low-importance ongoing progress notification channel and high-importance security alerts.
+   * iOS application (`DropZone.iOS`):
+     * Sandboxed container integration with `UIDocumentPickerViewController`.
+     * `UIApplication.SharedApplication.IdleTimerDisabled` auto-lock and sleep prevention.
+     * `UNUserNotificationCenter` notification dispatching and badge management.
+     * `NSLocalNetworkUsageDescription` and Bonjour services registration in `Info.plist`.
+     * `BGTaskScheduler` (`com.dropzone.transfer.background`) and `BGProcessingTask` execution.
+   * Cross-platform responsive UI adaptation:
+     * Shared `MainView.axaml` (`UserControl`) supporting both Desktop (`IClassicDesktopStyleApplicationLifetime`) and Mobile (`ISingleViewApplicationLifetime`).
+     * Responsive navigation: 200px Left Rail for wide/desktop screens and thumb-friendly Bottom Navigation Bar for mobile/portrait form factors.
+     * Mobile file picker action card replacing desktop drag-and-drop.
+   * Multi-target native engine configuration (`cdylib` and `staticlib`) and runtime dynamic library resolution across desktop and mobile operating systems.
+5. **Phase 5: Pro & Enterprise Functionality** (Next Phase)
    * Multi-interface aggregation, folder sync, enterprise credential management.
 6. **Phase 6: Quality Assurance & Stable Release**
    * Security audits, stress testing, fuzzing, cross-platform packaging.

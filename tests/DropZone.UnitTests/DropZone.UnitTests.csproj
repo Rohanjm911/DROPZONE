@@ -22,6 +22,8 @@
     <ProjectReference Include="..\..\src\DropZone.Application\DropZone.Application.csproj" />
     <ProjectReference Include="..\..\src\DropZone.Infrastructure\DropZone.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\DropZone.Engine.Interop\DropZone.Engine.Interop.csproj" />
+    <ProjectReference Include="..\..\src\DropZone.Android\DropZone.Android.csproj" />
+    <ProjectReference Include="..\..\src\DropZone.iOS\DropZone.iOS.csproj" />
   </ItemGroup>
 
   <ItemGroup>

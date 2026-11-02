@@ -13,6 +13,9 @@ public sealed class TransferOrchestrator : IAsyncDisposable
     private readonly IFileSystemStorage _storage;
     private readonly ISecurityService _security;
     private readonly TransferQueue _queue;
+    private readonly IPlatformNotificationService? _notificationService;
+    private readonly IPlatformWakeLockService? _wakeLockService;
+    private readonly IPlatformLifecycleService? _lifecycleService;
     private readonly Dictionary<Guid, TransferSpeedEstimator> _speedEstimators = new();
     private readonly Dictionary<Guid, int> _retryCounts = new();
     private readonly object _lock = new();
@@ -30,7 +33,10 @@ public sealed class TransferOrchestrator : IAsyncDisposable
         IDeviceRepository deviceRepository,
         IFileSystemStorage storage,
         ISecurityService security,
-        TransferQueue? queue = null)
+        TransferQueue? queue = null,
+        IPlatformNotificationService? notificationService = null,
+        IPlatformWakeLockService? wakeLockService = null,
+        IPlatformLifecycleService? lifecycleService = null)
     {
         _engine = engine;
         _repository = repository;
@@ -38,6 +44,9 @@ public sealed class TransferOrchestrator : IAsyncDisposable
         _storage = storage;
         _security = security;
         _queue = queue ?? new TransferQueue();
+        _notificationService = notificationService;
+        _wakeLockService = wakeLockService;
+        _lifecycleService = lifecycleService;
 
         _engine.EventReceived += OnEngineEventReceived;
     }
@@ -107,6 +116,11 @@ public sealed class TransferOrchestrator : IAsyncDisposable
             JobUpdated?.Invoke(job);
             await _repository.UpdateJobStateAsync(job.Id, job.State);
 
+            if (_wakeLockService != null)
+                await _wakeLockService.AcquireWakeLockAsync(job.Id.ToString(), $"Outbound to {targetDevice.Name}");
+            if (_lifecycleService != null)
+                await _lifecycleService.NotifyBackgroundTransferStartingAsync(job.Id.ToString());
+
             await _engine.SendJobAsync(targetDevice.IpAddress, targetDevice.Port, manifest);
         }
         catch (Exception ex)
@@ -138,6 +152,11 @@ public sealed class TransferOrchestrator : IAsyncDisposable
         JobUpdated?.Invoke(job);
         await _repository.UpdateJobStateAsync(job.Id, job.State, ct: ct);
 
+        if (_wakeLockService != null)
+            await _wakeLockService.AcquireWakeLockAsync(job.Id.ToString(), "Inbound transfer", ct);
+        if (_lifecycleService != null)
+            await _lifecycleService.NotifyBackgroundTransferStartingAsync(job.Id.ToString(), ct);
+
         await _engine.AcceptJobAsync(job.Id, (ulong)resumeOffset, ct);
     }
 
@@ -163,6 +182,16 @@ public sealed class TransferOrchestrator : IAsyncDisposable
             job.EtaSeconds = 0;
             JobUpdated?.Invoke(job);
             await _repository.UpdateJobStateAsync(job.Id, job.State, ct: ct);
+
+            if (_wakeLockService != null)
+                await _wakeLockService.ReleaseWakeLockAsync(jobId.ToString(), ct);
+            if (_lifecycleService != null)
+                await _lifecycleService.NotifyBackgroundTransferFinishedAsync(jobId.ToString(), ct);
+            if (_notificationService != null)
+            {
+                var fileName = job.Files.FirstOrDefault()?.RelativePath ?? "Files";
+                await _notificationService.ShowTransferProgressNotificationAsync(jobId.ToString(), fileName, (int)Math.Round(job.ProgressPercentage), 0, 0, isOngoing: false, ct);
+            }
         }
 
         await _engine.PauseJobAsync(jobId, ct);
@@ -175,6 +204,11 @@ public sealed class TransferOrchestrator : IAsyncDisposable
             job.State = TransferState.Transferring;
             JobUpdated?.Invoke(job);
             await _repository.UpdateJobStateAsync(job.Id, job.State, ct: ct);
+
+            if (_wakeLockService != null)
+                await _wakeLockService.AcquireWakeLockAsync(jobId.ToString(), "Resumed transfer", ct);
+            if (_lifecycleService != null)
+                await _lifecycleService.NotifyBackgroundTransferStartingAsync(jobId.ToString(), ct);
         }
 
         await _engine.ResumeJobAsync(jobId, ct);
@@ -189,6 +223,13 @@ public sealed class TransferOrchestrator : IAsyncDisposable
             JobUpdated?.Invoke(job);
             await _repository.UpdateJobStateAsync(job.Id, job.State, job.ErrorMessage, ct);
             await _storage.CleanPartFilesAsync(jobId, ct);
+
+            if (_wakeLockService != null)
+                await _wakeLockService.ReleaseWakeLockAsync(jobId.ToString(), ct);
+            if (_lifecycleService != null)
+                await _lifecycleService.NotifyBackgroundTransferFinishedAsync(jobId.ToString(), ct);
+            if (_notificationService != null)
+                await _notificationService.CancelNotificationAsync(jobId.ToString(), ct);
         }
 
         await _engine.CancelJobAsync(jobId, ct);
@@ -262,6 +303,18 @@ public sealed class TransferOrchestrator : IAsyncDisposable
 
                         JobUpdated?.Invoke(pJob);
                         await _repository.UpdateJobProgressAsync(jobId, transferred, pJob.SpeedBytesPerSec, pJob.EtaSeconds);
+
+                        if (_notificationService != null)
+                        {
+                            var fileName = pJob.Files.FirstOrDefault()?.RelativePath ?? "Files";
+                            await _notificationService.ShowTransferProgressNotificationAsync(
+                                jobId.ToString(),
+                                fileName,
+                                (int)Math.Round(pJob.ProgressPercentage),
+                                pJob.SpeedBytesPerSec,
+                                pJob.EtaSeconds,
+                                isOngoing: true);
+                        }
                     }
                     break;
 
@@ -285,6 +338,20 @@ public sealed class TransferOrchestrator : IAsyncDisposable
 
                         JobUpdated?.Invoke(cJob);
                         await _repository.UpdateJobStateAsync(compJobId, TransferState.Completed);
+
+                        if (_wakeLockService != null)
+                            await _wakeLockService.ReleaseWakeLockAsync(compJobId.ToString());
+                        if (_lifecycleService != null)
+                            await _lifecycleService.NotifyBackgroundTransferFinishedAsync(compJobId.ToString());
+                        if (_notificationService != null)
+                        {
+                            var fileName = cJob.Files.FirstOrDefault()?.RelativePath ?? "Files";
+                            await _notificationService.ShowTransferCompletedNotificationAsync(
+                                compJobId.ToString(),
+                                fileName,
+                                cJob.TotalBytes,
+                                isSuccess: true);
+                        }
 
                         lock (_lock)
                         {
@@ -362,6 +429,12 @@ public sealed class TransferOrchestrator : IAsyncDisposable
 
         // Security check: Verify if any files in manifest are suspicious or disguised
         var hasSuspiciousFiles = manifest.Files.Any(f => _security.AnalyzeFile(f.RelativePath).IsSuspicious);
+        if (hasSuspiciousFiles && _notificationService != null)
+        {
+            await _notificationService.ShowSecurityAlertNotificationAsync(
+                "Suspicious File Warning",
+                $"Inbound transfer from '{manifest.SenderDeviceName}' contains potential malware or disguised executable extensions.");
+        }
 
         // Check Device Trust Level and Granular Permissions
         var peer = await _deviceRepository.GetDeviceAsync(manifest.SenderDeviceId);
@@ -450,6 +523,21 @@ public sealed class TransferOrchestrator : IAsyncDisposable
             job.EtaSeconds = 0;
             JobUpdated?.Invoke(job);
             await _repository.UpdateJobStateAsync(jobId, job.State, message);
+
+            if (_wakeLockService != null)
+                await _wakeLockService.ReleaseWakeLockAsync(jobId.ToString());
+            if (_lifecycleService != null)
+                await _lifecycleService.NotifyBackgroundTransferFinishedAsync(jobId.ToString());
+            if (_notificationService != null)
+            {
+                var fileName = job.Files.FirstOrDefault()?.RelativePath ?? "Files";
+                await _notificationService.ShowTransferCompletedNotificationAsync(
+                    jobId.ToString(),
+                    fileName,
+                    job.TotalBytes,
+                    isSuccess: false,
+                    errorMessage: message);
+            }
         }
     }
 

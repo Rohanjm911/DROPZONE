@@ -121,3 +121,24 @@ The managed C# application and the native Rust engine communicate across a stric
   * `devices`: Discovered and paired peers, trust levels (`Blocked`, `Prompt`, `Trusted`), public identity key, last seen.
   * `settings`: Key-value application settings (download folder, device name, auto-accept, network port).
 
+---
+
+## 6. Mobile Platform Architecture (Android & iOS)
+
+### Android Architecture (`DropZone.Android`)
+* **Background Execution & Doze Mode**: Mobile kernels kill inactive background TCP sockets when the display sleeps. DropZone addresses this with `DropZoneTransferForegroundService` (`android:foregroundServiceType="dataSync"`), holding a `PowerManager.WakeLock` (`PARTIAL_WAKE_LOCK`) throughout active transfers.
+* **Multicast Filtering Bypass**: Android kernels filter UDP multicast packets by default to preserve battery life. DropZone acquires `WifiManager.MulticastLock` during discovery to ensure incoming mDNS beacons are received reliably.
+* **Scoped Storage (API 29+)**: Raw filesystem access to arbitrary directories is restricted. DropZone routes downloads through app-scoped sandboxed storage and integrates with the Android Storage Access Framework (SAF) and MediaStore.
+* **Notification Channels**: Notifications are partitioned into `dropzone_channel_transfers` (Low importance, silent ongoing progress bars) and `dropzone_channel_alerts` (High importance, heads-up security warnings).
+
+### iOS Architecture (`DropZone.iOS`)
+* **Sandboxed Container**: iOS strictly isolates file access within the application's `Documents`, `Library/Caches`, and `tmp` directories. File selections outside the sandbox use `UIDocumentPickerViewController`.
+* **Sleep & Auto-Lock Prevention**: During active file transfers, `UIApplication.SharedApplication.IdleTimerDisabled` is asserted by `IOSWakeLockService` to prevent premature socket termination.
+* **Local Network Privacy (iOS 14+)**: DropZone configures `NSLocalNetworkUsageDescription` and registers `_dropzone._tcp` under `NSBonjourServices` in `Info.plist` to obtain explicit user permission before opening local peer sockets.
+* **Background Tasks**: Multi-megabyte and multi-gigabyte transfers coordinate with `BGTaskScheduler` (`com.dropzone.transfer.background`) and `BGProcessingTask`.
+
+### Responsive Cross-Platform UI Adaptation
+* **Dual Lifetime Architecture**: The shared UI is encapsulated within `MainView.axaml` (`UserControl`). On desktop platforms, `MainWindow` hosts `MainView` within `IClassicDesktopStyleApplicationLifetime`. On mobile platforms, `MainView` is mounted directly into `ISingleViewApplicationLifetime`.
+* **Adaptive Navigation**: Desktop renders a 200px Left Navigation Rail; mobile form factors automatically switch to a thumb-friendly Bottom Navigation Bar with large tap targets.
+* **Mobile File Selection**: Since desktop drag-and-drop is unavailable on mobile operating systems, the Transfers view provides a dedicated "Pick Files to Send" touch action integrated with the platform storage picker.
+
