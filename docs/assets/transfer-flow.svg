@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 220" width="100%" height="220">
+  <defs>
+    <style>
+      @keyframes flowPacket {
+        0% { stroke-dashoffset: 240; }
+        100% { stroke-dashoffset: 0; }
+      }
+      @keyframes moveBall1 {
+        0% { transform: translateX(0px); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { transform: translateX(360px); opacity: 0; }
+      }
+      @keyframes moveBall2 {
+        0% { transform: translateX(0px); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { transform: translateX(360px); opacity: 0; }
+      }
+      @keyframes progressBar {
+        0% { width: 0px; }
+        70% { width: 280px; }
+        90% { width: 340px; }
+        100% { width: 340px; }
+      }
+      @keyframes pulseGlow {
+        0%, 100% { filter: drop-shadow(0 0 2px #38bdf8); }
+        50% { filter: drop-shadow(0 0 8px #38bdf8); }
+      }
+      .stream-line {
+        stroke-dasharray: 12 12;
+        animation: flowPacket 1.5s linear infinite;
+      }
+      .ball-1 {
+        animation: moveBall1 2s linear infinite;
+      }
+      .ball-2 {
+        animation: moveBall2 2s linear infinite 0.7s;
+      }
+      .ball-3 {
+        animation: moveBall2 2s linear infinite 1.4s;
+      }
+      .progress-fill {
+        animation: progressBar 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+      .glow-node {
+        animation: pulseGlow 2.5s infinite ease-in-out;
+      }
+      .label-title {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-weight: 700;
+        font-size: 14px;
+        fill: #f8fafc;
+      }
+      .label-sub {
+        font-family: monospace;
+        font-size: 11px;
+        fill: #94a3b8;
+      }
+      .metric-label {
+        font-family: monospace;
+        font-size: 11px;
+        font-weight: 600;
+        fill: #38bdf8;
+      }
+    </style>
+  </defs>
+
+  <!-- Container Box -->
+  <rect x="2" y="2" width="836" height="216" rx="14" fill="#090d16" stroke="#1e293b" stroke-width="2"/>
+
+  <!-- Left Node: Device A (Sender / Desktop) -->
+  <g transform="translate(40, 45)">
+    <rect x="0" y="0" width="160" height="130" rx="10" fill="#0f172a" stroke="#334155" stroke-width="1.5" class="glow-node"/>
+    
+    <!-- Desktop Monitor Icon -->
+    <rect x="55" y="20" width="50" height="34" rx="3" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+    <line x1="80" y1="54" x2="80" y2="64" stroke="#38bdf8" stroke-width="2"/>
+    <line x1="70" y1="64" x2="90" y2="64" stroke="#38bdf8" stroke-width="2"/>
+    <circle cx="80" cy="37" r="5" fill="#38bdf8"/>
+
+    <text x="80" y="86" text-anchor="middle" class="label-title">Workstation A</text>
+    <text x="80" y="103" text-anchor="middle" class="label-sub">192.168.1.10</text>
+    <text x="80" y="118" text-anchor="middle" font-family="monospace" font-size="10" fill="#10b981">● SENDER (LAN)</text>
+  </g>
+
+  <!-- Middle Pipeline: Direct E2EE DZP1 Stream -->
+  <g transform="translate(220, 60)">
+    <!-- Base track line -->
+    <line x1="0" y1="45" x2="360" y2="45" stroke="#1e293b" stroke-width="6" stroke-linecap="round"/>
+    
+    <!-- Animated streaming dashed line -->
+    <line x1="0" y1="45" x2="360" y2="45" stroke="#0284c7" stroke-width="4" stroke-linecap="round" class="stream-line"/>
+
+    <!-- Moving Encrypted Chunks (Packets) -->
+    <g class="ball-1">
+      <circle cx="0" cy="45" r="7" fill="#38bdf8"/>
+      <circle cx="0" cy="45" r="3" fill="#f8fafc"/>
+    </g>
+    <g class="ball-2">
+      <circle cx="0" cy="45" r="7" fill="#38bdf8"/>
+      <circle cx="0" cy="45" r="3" fill="#f8fafc"/>
+    </g>
+    <g class="ball-3">
+      <circle cx="0" cy="7" r="0" fill="none"/>
+      <circle cx="0" cy="45" r="7" fill="#10b981"/>
+      <circle cx="0" cy="45" r="3" fill="#f8fafc"/>
+    </g>
+
+    <!-- Center Security Shield Badge -->
+    <g transform="translate(145, 10)">
+      <rect x="0" y="0" width="70" height="70" rx="35" fill="#0b1120" stroke="#38bdf8" stroke-width="2"/>
+      <!-- Lock glyph -->
+      <path d="M 35 24 C 29 24 26 28 26 33 L 26 36 L 24 36 C 22 36 21 38 21 40 L 21 51 C 21 53 22 55 24 55 L 46 55 C 48 55 49 53 49 51 L 49 40 C 49 38 48 36 46 36 L 44 36 L 44 33 C 44 28 41 24 35 24 Z M 35 27 C 38 27 41 29 41 33 L 41 36 L 29 36 L 29 33 C 29 29 32 27 35 27 Z" fill="#38bdf8"/>
+    </g>
+
+    <!-- Pipeline Protocol Tags -->
+    <text x="180" y="-12" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#f8fafc">
+      DZP1 BINARY STREAMING (ZERO-CLOUD)
+    </text>
+    <text x="180" y="5" text-anchor="middle" font-family="monospace" font-size="10" fill="#94a3b8">
+      ChaCha20-Poly1305 AEAD • 4MB Adaptive Chunks
+    </text>
+
+    <!-- Dynamic Progress Bar -->
+    <g transform="translate(10, 82)">
+      <rect x="0" y="0" width="340" height="8" rx="4" fill="#1e293b"/>
+      <rect x="0" y="0" width="0" height="8" rx="4" fill="#10b981" class="progress-fill"/>
+    </g>
+
+    <!-- Telemetry Metrics Bar Below Progress -->
+    <text x="10" y="106" class="metric-label">SPEED: 1.42 GB/s</text>
+    <text x="180" y="106" text-anchor="middle" class="metric-label">RTT: 1.2 ms</text>
+    <text x="350" y="106" text-anchor="end" class="metric-label" fill="#10b981">HASH: SHA-256 OK</text>
+  </g>
+
+  <!-- Right Node: Device B (Receiver / Mobile / Remote) -->
+  <g transform="translate(640, 45)">
+    <rect x="0" y="0" width="160" height="130" rx="10" fill="#0f172a" stroke="#334155" stroke-width="1.5" class="glow-node"/>
+    
+    <!-- Smartphone / Tablet Icon -->
+    <rect x="65" y="18" width="30" height="48" rx="4" fill="#1e293b" stroke="#10b981" stroke-width="1.5"/>
+    <circle cx="80" cy="58" r="3" fill="#10b981"/>
+    <line x1="72" y1="23" x2="88" y2="23" stroke="#94a3b8" stroke-width="1"/>
+
+    <text x="80" y="86" text-anchor="middle" class="label-title">Mobile Pixel 8</text>
+    <text x="80" y="103" text-anchor="middle" class="label-sub">192.168.1.45</text>
+    <text x="80" y="118" text-anchor="middle" font-family="monospace" font-size="10" fill="#38bdf8">● RECEIVER (OK)</text>
+  </g>
+</svg>

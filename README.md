@@ -1,11 +1,13 @@
-# DROPZONE
+<p align="center">
+  <img src="docs/assets/hero-banner.svg" alt="DROPZONE - Move Files. Not Your Privacy." width="100%" />
+</p>
 
-> **Move Files. Not Your Privacy.**
-
-[![GitHub Repo](https://img.shields.io/badge/GitHub-Rohanjm911%2FDROPZONE-blue?logo=github)](https://github.com/Rohanjm911/DROPZONE)
-[![Build & Test Status](https://img.shields.io/badge/Tests-73%20Passing%20(100%25)-success)](#-testing--quality-assurance)
-[![Platforms](https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Android%20%7C%20iOS-informational)](#-pre-built-applications--distribution)
-[![License](https://img.shields.io/badge/License-Proprietary%20%2F%20Open-blue)](#-license--privacy-commitment)
+<p align="center">
+  <a href="https://github.com/Rohanjm911/DROPZONE"><img src="https://img.shields.io/badge/GitHub-Rohanjm911%2FDROPZONE-blue?logo=github" alt="GitHub Repo" /></a>
+  <a href="#-testing--quality-assurance"><img src="https://img.shields.io/badge/Tests-73%20Passing%20(100%25)-success" alt="Build & Test Status" /></a>
+  <a href="#-pre-built-applications--distribution"><img src="https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Android%20%7C%20iOS-informational" alt="Platforms" /></a>
+  <a href="#-license--privacy-commitment"><img src="https://img.shields.io/badge/License-Proprietary%20%2F%20Open-blue" alt="License" /></a>
+</p>
 
 DROPZONE is a high-performance, privacy-first, cross-platform file-sharing application supporting Windows, Linux, macOS, Android, and iOS. Its primary mission is to enable secure, direct device-to-device file transfers over local networks and the internet without relying on traditional cloud file storage.
 
@@ -21,6 +23,18 @@ Pre-built binaries and application distribution packages are available directly 
 * **Android**: [`DropZone-Android/`](DropZone-Android/) contains the mobile platform library, `AndroidManifest.xml` (foreground service & wake locks), and deployment guide.
 * **iOS**: [`DropZone-iOS/`](DropZone-iOS/) contains the iOS platform library, `Info.plist` (Bonjour and background processing), and Xcode distribution guide.
 * **Native Engine**: [`DropZone-Native-Engine/`](DropZone-Native-Engine/) contains `dropzone_engine.dll` and the C-ABI header `dropzone_engine.h`.
+
+---
+
+## 📡 Live P2P Streaming Architecture
+
+<p align="center">
+  <img src="docs/assets/transfer-flow.svg" alt="DROPZONE Encrypted Streaming Pipeline" width="100%" />
+</p>
+
+* **Zero-Cloud Intermediaries**: Chunks stream directly peer-to-peer over LAN or reflexive P2P NAT bindings.
+* **Authenticated Encryption**: ChaCha20-Poly1305 AEAD with sequence nonces renders TURN blind relays unable to decrypt file payloads.
+* **Multi-Gigabit Throughput**: Dynamic adaptive chunk sizing ($64\text{ KB} \leftrightarrow 4\text{ MB}$) guarantees optimal TCP window scaling and wire saturation.
 
 ---
 
@@ -41,7 +55,15 @@ Pre-built binaries and application distribution packages are available directly 
 
 ---
 
-## 🏛 Architecture Overview
+## 💻 Live Session Simulation
+
+<p align="center">
+  <img src="docs/assets/terminal-demo.svg" alt="DROPZONE CLI & Transfer Session" width="100%" />
+</p>
+
+---
+
+## 🏛 System Architecture Overview
 
 DROPZONE follows a clean, decoupled 8-layer architecture:
 

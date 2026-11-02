@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 200" width="100%" height="200">
+  <defs>
+    <style>
+      @keyframes pulseDot {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.6); opacity: 0.4; }
+      }
+      @keyframes radarSweep {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      @keyframes glowStroke {
+        0%, 100% { stroke: #0284c7; }
+        50% { stroke: #38bdf8; }
+      }
+      @keyframes textShine {
+        0%, 100% { fill: #f8fafc; }
+        50% { fill: #38bdf8; }
+      }
+      .beacon {
+        animation: pulseDot 2s infinite ease-in-out;
+        transform-origin: 32px 162px;
+      }
+      .radar-line {
+        animation: radarSweep 4s linear infinite;
+        transform-origin: 90px 100px;
+      }
+      .shield-border {
+        animation: glowStroke 3s infinite ease-in-out;
+      }
+      .brand-title {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-weight: 800;
+        font-size: 38px;
+        letter-spacing: 4px;
+        fill: #f8fafc;
+      }
+      .tagline {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-weight: 500;
+        font-size: 16px;
+        letter-spacing: 1.5px;
+        fill: #94a3b8;
+      }
+      .pill-text {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 1px;
+        fill: #38bdf8;
+      }
+    </style>
+  </defs>
+
+  <!-- Background Card -->
+  <rect x="2" y="2" width="836" height="196" rx="16" fill="#0b1120" stroke="#1e293b" stroke-width="2"/>
+
+  <!-- Subtle Grid Accent -->
+  <g opacity="0.08" stroke="#38bdf8" stroke-width="1">
+    <line x1="20" y1="50" x2="820" y2="50"/>
+    <line x1="20" y1="100" x2="820" y2="100"/>
+    <line x1="20" y1="150" x2="820" y2="150"/>
+    <line x1="200" y1="10" x2="200" y2="190"/>
+    <line x1="400" y1="10" x2="400" y2="190"/>
+    <line x1="600" y1="10" x2="600" y2="190"/>
+  </g>
+
+  <!-- Radar Shield Emblem -->
+  <g transform="translate(10, 0)">
+    <!-- Outer concentric circles -->
+    <circle cx="90" cy="100" r="50" fill="#0f172a" stroke="#1e293b" stroke-width="2"/>
+    <circle cx="90" cy="100" r="36" fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <circle cx="90" cy="100" r="22" fill="none" stroke="#0284c7" stroke-width="1.5" opacity="0.5"/>
+    
+    <!-- Rotating Radar Scanner Beam -->
+    <g class="radar-line">
+      <line x1="90" y1="100" x2="90" y2="52" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+      <polygon points="90,100 82,54 98,54" fill="#38bdf8" opacity="0.2"/>
+    </g>
+
+    <!-- Shield Icon in Center -->
+    <path d="M 90 74 L 108 82 C 108 98 90 114 90 114 C 90 114 72 98 72 82 Z" 
+          fill="#0284c7" class="shield-border" stroke="#38bdf8" stroke-width="2"/>
+    <!-- Lock Keyhole Inside Shield -->
+    <circle cx="90" cy="91" r="3.5" fill="#f8fafc"/>
+    <path d="M 88.5 93 L 91.5 93 L 92.5 102 L 87.5 102 Z" fill="#f8fafc"/>
+  </g>
+
+  <!-- Typography -->
+  <text x="180" y="85" class="brand-title">DROPZONE</text>
+  <text x="182" y="118" class="tagline">Move Files. Not Your Privacy.</text>
+
+  <!-- Live Status Pill Badge -->
+  <g transform="translate(182, 140)">
+    <rect x="0" y="0" width="360" height="28" rx="14" fill="#0f172a" stroke="#0284c7" stroke-width="1.5"/>
+    <!-- Live pulsing beacon dot -->
+    <circle cx="16" cy="14" r="7" fill="#10b981" opacity="0.3" class="beacon"/>
+    <circle cx="16" cy="14" r="4" fill="#10b981"/>
+    <text x="32" y="18" class="pill-text">ZERO-CLOUD P2P DIRECT STREAMING • ACTIVE</text>
+  </g>
+
+  <!-- Quick Feature Badges on Right -->
+  <g transform="translate(620, 42)">
+    <!-- Badge 1: Rust Engine -->
+    <rect x="0" y="0" width="180" height="32" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="14" y="21" font-family="monospace" font-size="12" font-weight="700" fill="#f97316">🦀 RUST DZP1 ENGINE</text>
+
+    <!-- Badge 2: ChaCha20 AEAD -->
+    <rect x="0" y="42" width="180" height="32" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="14" y="63" font-family="monospace" font-size="12" font-weight="700" fill="#38bdf8">🔒 CHACHA20-POLY1305</text>
+
+    <!-- Badge 3: Cross Platform -->
+    <rect x="0" y="84" width="180" height="32" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="14" y="105" font-family="monospace" font-size="12" font-weight="700" fill="#10b981">📱 5 PLATFORMS READY</text>
+  </g>
+</svg>
