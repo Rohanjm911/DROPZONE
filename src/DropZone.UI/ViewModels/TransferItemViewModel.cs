@@ -29,6 +29,15 @@ public sealed partial class TransferItemViewModel : ViewModelBase
     public double Progress => Job.ProgressPercentage;
     public string FormattedProgress => $"{Job.ProgressPercentage:0.0}%";
     public string FormattedSize => $"{FormatBytes(Job.TransferredBytes)} of {FormatBytes(Job.TotalBytes)}";
+    public string FormattedDate => Job.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy HH:mm");
+    public string FileExtensionBadge
+    {
+        get
+        {
+            var ext = System.IO.Path.GetExtension(PrimaryFileName).TrimStart('.').ToUpperInvariant();
+            return string.IsNullOrEmpty(ext) ? "DATA" : ext;
+        }
+    }
     public string FormattedSpeed => Job.State == TransferState.Transferring && Job.SpeedBytesPerSec > 0
         ? $"{FormatBytes((long)Job.SpeedBytesPerSec)}/s"
         : string.Empty;

@@ -110,4 +110,36 @@
     <Setter Property="TextBlock.Foreground" Value="#FFFFFF" />
   </Style>
 
+  <!-- Fluent / Apple HIG Filter Pill Button -->
+  <Style Selector="Button.FilterPill">
+    <Setter Property="Background" Value="{DynamicResource DzSurfaceBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource DzTextSecondaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource DzBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="12,5" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.FilterPill:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource DzSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource DzBorderLightBrush}" />
+    <Setter Property="TextBlock.Foreground" Value="{DynamicResource DzTextPrimaryBrush}" />
+  </Style>
+
+  <!-- Fluent Search Box -->
+  <Style Selector="TextBox.SearchBox">
+    <Setter Property="Background" Value="{DynamicResource DzSurfaceBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource DzTextPrimaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource DzBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+  <Style Selector="TextBox.SearchBox:focus /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="{DynamicResource DzPrimaryBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
 </Styles>

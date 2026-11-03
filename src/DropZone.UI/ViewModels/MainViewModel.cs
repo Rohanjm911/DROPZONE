@@ -119,6 +119,99 @@ public sealed partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private string _totalSpeedFormatted = "0.0 KB/s";
 
+    [ObservableProperty]
+    private string _deviceSearchQuery = string.Empty;
+
+    [ObservableProperty]
+    private string _deviceFilter = "All"; // All, Online, Trusted
+
+    [ObservableProperty]
+    private string _historySearchQuery = string.Empty;
+
+    [ObservableProperty]
+    private string _historyFilter = "All"; // All, Completed, Cancelled, Quarantined
+
+    [ObservableProperty]
+    private string _auditFilter = "All"; // All, Transfers, Security
+
+    [ObservableProperty]
+    private string _bandwidthLimit = "Unlimited";
+
+    [ObservableProperty]
+    private bool _quarantineSuspicious = true;
+
+    [ObservableProperty]
+    private bool _allowRemoteStun = true;
+
+    [ObservableProperty]
+    private bool _enableMdns = true;
+
+    [ObservableProperty]
+    private string _manualDeviceIp = string.Empty;
+
+    [ObservableProperty]
+    private string _manualDevicePort = "52490";
+
+    [ObservableProperty]
+    private string _manualDeviceStatus = string.Empty;
+
+    public IEnumerable<DeviceItemViewModel> FilteredDevices
+    {
+        get
+        {
+            var list = NearbyDevices.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(DeviceSearchQuery))
+            {
+                var q = DeviceSearchQuery.Trim().ToLowerInvariant();
+                list = list.Where(d => d.Name.ToLowerInvariant().Contains(q) || d.Endpoint.Contains(q));
+            }
+            if (DeviceFilter == "Online")
+                list = list.Where(d => d.IsOnline);
+            else if (DeviceFilter == "Trusted")
+                list = list.Where(d => d.TrustBadge == "TRUSTED");
+            return list;
+        }
+    }
+
+    public IEnumerable<TransferItemViewModel> FilteredHistory
+    {
+        get
+        {
+            var list = HistoryTransfers.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(HistorySearchQuery))
+            {
+                var q = HistorySearchQuery.Trim().ToLowerInvariant();
+                list = list.Where(t => t.PrimaryFileName.ToLowerInvariant().Contains(q) || t.PeerName.ToLowerInvariant().Contains(q));
+            }
+            if (HistoryFilter == "Completed")
+                list = list.Where(t => t.Job.State == TransferState.Completed);
+            else if (HistoryFilter == "Cancelled")
+                list = list.Where(t => t.Job.State == TransferState.Cancelled || t.Job.State == TransferState.Failed);
+            else if (HistoryFilter == "Quarantined")
+                list = list.Where(t => t.Job.State == TransferState.Quarantined);
+            return list;
+        }
+    }
+
+    public IEnumerable<ComplianceAuditEntry> FilteredAuditLog
+    {
+        get
+        {
+            var list = AuditLog.AsEnumerable();
+            if (AuditFilter == "Transfers")
+                list = list.Where(a => a.EventType == AuditEventType.TransferStarted || a.EventType == AuditEventType.TransferCompleted || a.EventType == AuditEventType.TransferCancelled || a.EventType == AuditEventType.TransferFailed);
+            else if (AuditFilter == "Security")
+                list = list.Where(a => a.EventType == AuditEventType.SecurityAlertTriggered || a.EventType == AuditEventType.FileQuarantined || a.EventType == AuditEventType.DeviceEnrolled || a.EventType == AuditEventType.DeviceBlocked || a.EventType == AuditEventType.PolicyUpdated);
+            return list;
+        }
+    }
+
+    partial void OnDeviceSearchQueryChanged(string value) => OnPropertyChanged(nameof(FilteredDevices));
+    partial void OnDeviceFilterChanged(string value) => OnPropertyChanged(nameof(FilteredDevices));
+    partial void OnHistorySearchQueryChanged(string value) => OnPropertyChanged(nameof(FilteredHistory));
+    partial void OnHistoryFilterChanged(string value) => OnPropertyChanged(nameof(FilteredHistory));
+    partial void OnAuditFilterChanged(string value) => OnPropertyChanged(nameof(FilteredAuditLog));
+
     public MainViewModel(
         TransferOrchestrator orchestrator,
         IDeviceRepository deviceRepo,
@@ -150,6 +243,10 @@ public sealed partial class MainViewModel : ViewModelBase
         _orchestrator.PairingCompleted += OnPairingCompleted;
         _orchestrator.NatCandidateDiscovered += OnNatCandidateDiscovered;
         _orchestrator.TelemetryUpdated += OnTelemetryUpdated;
+
+        NearbyDevices.CollectionChanged += (_, _) => OnPropertyChanged(nameof(FilteredDevices));
+        HistoryTransfers.CollectionChanged += (_, _) => OnPropertyChanged(nameof(FilteredHistory));
+        AuditLog.CollectionChanged += (_, _) => OnPropertyChanged(nameof(FilteredAuditLog));
     }
 
     public async Task InitializeAsync()
@@ -333,6 +430,132 @@ public sealed partial class MainViewModel : ViewModelBase
             DeviceName);
 
         CurrentTab = "Transfers";
+    }
+
+    [RelayCommand]
+    public void SetDeviceFilter(string filter) => DeviceFilter = filter;
+
+    [RelayCommand]
+    public void SetHistoryFilter(string filter) => HistoryFilter = filter;
+
+    [RelayCommand]
+    public void SetAuditFilter(string filter) => AuditFilter = filter;
+
+    [RelayCommand]
+    public async Task PickAndSendFolderAsync()
+    {
+        if (_storagePicker == null) return;
+        var folder = await _storagePicker.PickFolderAsync("Select folder to send with DropZone");
+        if (!string.IsNullOrEmpty(folder))
+        {
+            await HandleDroppedFilesAsync(new[] { folder });
+        }
+    }
+
+    [RelayCommand]
+    public async Task ChangeDownloadPathAsync()
+    {
+        if (_storagePicker == null) return;
+        var folder = await _storagePicker.PickFolderAsync("Select New Download Directory");
+        if (!string.IsNullOrEmpty(folder) && Directory.Exists(folder))
+        {
+            DownloadPath = folder;
+        }
+    }
+
+    [RelayCommand]
+    public void OpenDownloadsFolder()
+    {
+        if (Directory.Exists(DownloadPath))
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = DownloadPath,
+                    UseShellExecute = true
+                });
+            }
+            catch { }
+        }
+    }
+
+    [RelayCommand]
+    public void ClearCompletedTransfers()
+    {
+        var toRemove = ActiveTransfers
+            .Where(t => t.Job.State == TransferState.Completed || t.Job.State == TransferState.Cancelled || t.Job.State == TransferState.Failed)
+            .ToList();
+        foreach (var item in toRemove)
+        {
+            ActiveTransfers.Remove(item);
+        }
+    }
+
+    [RelayCommand]
+    public void ClearHistoryTransfers()
+    {
+        HistoryTransfers.Clear();
+        OnPropertyChanged(nameof(FilteredHistory));
+    }
+
+    [RelayCommand]
+    public void OpenTransferFile(TransferItemViewModel? item)
+    {
+        if (item == null) return;
+        var fullPath = Path.Combine(DownloadPath, item.PrimaryFileName);
+        if (File.Exists(fullPath))
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = fullPath,
+                    UseShellExecute = true
+                });
+            }
+            catch { }
+        }
+        else
+        {
+            OpenDownloadsFolder();
+        }
+    }
+
+    [RelayCommand]
+    public void OpenTransferFolder(TransferItemViewModel? item)
+    {
+        OpenDownloadsFolder();
+    }
+
+    [RelayCommand]
+    public async Task AddManualDeviceAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ManualDeviceIp))
+        {
+            ManualDeviceStatus = "Enter a valid IP address";
+            return;
+        }
+
+        if (!ushort.TryParse(ManualDevicePort, out var port))
+        {
+            port = 52490;
+        }
+
+        var dev = new Device
+        {
+            Id = $"manual-{ManualDeviceIp.Trim().Replace('.', '-')}-{port}",
+            Name = $"Peer ({ManualDeviceIp.Trim()})",
+            IpAddress = ManualDeviceIp.Trim(),
+            Port = port,
+            TrustLevel = DeviceTrustLevel.Prompt,
+            LastSeen = DateTime.UtcNow
+        };
+
+        await _deviceRepo.UpsertDeviceAsync(dev);
+        AddOrUpdateDevice(dev);
+        ManualDeviceStatus = $"Device added: {dev.IpAddress}:{dev.Port}";
+        ManualDeviceIp = string.Empty;
     }
 
     public async Task HandleDroppedFilesAsync(IEnumerable<string> paths)

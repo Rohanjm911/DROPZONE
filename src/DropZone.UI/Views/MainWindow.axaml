@@ -5,9 +5,10 @@
         x:Class="DropZone.UI.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="DROPZONE – Move Files. Not Your Privacy."
-        Width="960" Height="680"
-        MinWidth="400" MinHeight="500"
+        Width="1020" Height="700"
+        MinWidth="680" MinHeight="500"
         WindowStartupLocation="CenterScreen"
+        TransparencyLevelHint="Mica, AcrylicBlur, None"
         Background="{DynamicResource DzBgBrush}"
         DragDrop.AllowDrop="True">
 
