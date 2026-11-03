@@ -121,7 +121,9 @@ All release artifacts are compiled and organized in the root directory:
 * C# FFI Interop bridge ([`DropZone.Engine.Interop`](src/DropZone.Engine.Interop/)).
 * Domain models, concurrent transfer queue, pause/resume/cancel mechanics, and dynamic speed/ETA calculation.
 * SQLite persistence in WAL mode for transfer history and active state tracking.
-* Avalonia MVVM desktop UI with drag-and-drop file target card, dark theme, and solid palette.
+* Avalonia MVVM desktop & mobile UI with Option 3 "Fluent Native" styling (Windows 11 Mica/Acrylic, Apple Human Interface ergonomics, solid high-contrast palette, zero harsh gradients).
+* Real-time search & category filter bars across all workspaces (Nearby Devices, Transfer History, Compliance Audit).
+* Directory & multi-file pickers, direct OS shell integrations (Open File, Reveal in Explorer/Finder), and quick folder streaming.
 
 ### Phase 2: Security & Advanced Networking (Completed ✅)
 * Authenticated end-to-end encryption with ChaCha20-Poly1305.
