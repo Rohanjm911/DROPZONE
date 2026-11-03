@@ -27,6 +27,23 @@ public sealed partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private string _currentTab = "Transfers"; // Transfers, Devices, History, Diagnostics, Settings, Audit
 
+    public bool IsTransfersTab => CurrentTab == "Transfers";
+    public bool IsDevicesTab => CurrentTab == "Devices";
+    public bool IsHistoryTab => CurrentTab == "History";
+    public bool IsAuditTab => CurrentTab == "Audit";
+    public bool IsDiagnosticsTab => CurrentTab == "Diagnostics";
+    public bool IsSettingsTab => CurrentTab == "Settings";
+
+    partial void OnCurrentTabChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsTransfersTab));
+        OnPropertyChanged(nameof(IsDevicesTab));
+        OnPropertyChanged(nameof(IsHistoryTab));
+        OnPropertyChanged(nameof(IsAuditTab));
+        OnPropertyChanged(nameof(IsDiagnosticsTab));
+        OnPropertyChanged(nameof(IsSettingsTab));
+    }
+
     [ObservableProperty]
     private string _auditIntegrityStatus = "Ledger intact (SHA-256 chain verified)";
 

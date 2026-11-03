@@ -64,13 +64,13 @@ public sealed partial class TransferItemViewModel : ViewModelBase
 
     public string StateColor => Job.State switch
     {
-        TransferState.Transferring => "#1058FF", // Primary
-        TransferState.Completed => "#10B981",    // Success
-        TransferState.Failed => "#EF4444",       // Danger
-        TransferState.Cancelled => "#646472",    // Muted
-        TransferState.Paused => "#F59E0B",       // Warning
-        TransferState.Quarantined => "#EF4444",  // Danger
-        _ => "#9A9AA6"                           // Neutral
+        TransferState.Transferring => "#0284C7", // Primary Obsidian Cyan
+        TransferState.Completed => "#10B981",    // Success Emerald
+        TransferState.Failed => "#EF4444",       // Danger Crimson
+        TransferState.Cancelled => "#64748B",    // Muted Slate
+        TransferState.Paused => "#F59E0B",       // Warning Amber
+        TransferState.Quarantined => "#EF4444",  // Danger Crimson
+        _ => "#94A3B8"                           // Neutral Slate
     };
 
     public bool CanPause => Job.State == TransferState.Transferring;

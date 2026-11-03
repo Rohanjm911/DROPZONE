@@ -28,7 +28,7 @@ public sealed partial class DeviceItemViewModel : ViewModelBase
     public bool IsOnline => Device.IsOnline;
 
     public string StatusText => Device.IsOnline ? "ONLINE" : "OFFLINE";
-    public string StatusColor => Device.IsOnline ? "#10B981" : "#646472";
+    public string StatusColor => Device.IsOnline ? "#10B981" : "#64748B";
 
     public string TrustBadge => Device.TrustLevel switch
     {
